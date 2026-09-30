@@ -245,10 +245,12 @@ function staffEvent(){
   notif("Ville : "+e.nom+" — "+e.desc,(state.players||[]).map(x=>x.id));
   save();
 }
+const EV_END={tempete:"La tempête s'est calmée.",pluie:"L'orage s'est éloigné.",incendie:"L'incendie a été éteint.",seisme:"Les secousses ont cessé, la ville se remet du séisme.",greve:"La grève est terminée, le travail reprend.",fete:"La fête de quartier est terminée."};
+function evEndMsg(id){return EV_END[id]||"L'événement en ville est terminé."}
 function staffEndEvent(){
   if(!needArb())return;
-  state.world=state.world||{};state.world.event=null;state.world.jobsPaused=false;
-  bumpWorld();actLog("Fin de l'événement");notif("Fin de l'événement en ville",(state.players||[]).map(x=>x.id));save();
+  state.world=state.world||{};const _old=state.world.event;state.world.event=null;state.world.jobsPaused=false;
+  bumpWorld();actLog("Fin de l'événement");notif(evEndMsg(_old&&_old.id),(state.players||[]).map(x=>x.id));save();
 }
 function staffJobsOn(){
   if(!needArb())return;
@@ -2063,7 +2065,7 @@ function goStaff(){
   go("p-staff");save();
 }
 function go(id){const sel=selected();if(id==="p-staff"&&!staffUnlocked()&&!askStaffPin())return;if(id==="p-coffre"&&!(sel&&sel.house&&sel.coffre&&sel.coffre!=="none")){alert("Pas de coffre : achete une maison puis un coffre.");id="home"}document.querySelectorAll(".page").forEach(p=>p.classList.remove("on"));const _el=document.getElementById(id);if(_el)_el.classList.add("on");else{const h=document.getElementById("home");if(h)h.classList.add("on");}if(id==="p-map")setTimeout(()=>{bindMapGestures();mapUnlock();applyMapView();drawMapPin();},40);if(id==="p-sante")setTimeout(renderBodyMap,20)}
-function showBanner(k,t){const b=document.getElementById("banner");document.getElementById("bannerTxt").textContent=t;b.className="banner show";b.style.background=k==="baby"?"#5b2150":"#4a1010";setTimeout(()=>b.classList.remove("show"),12000)}
+function showBanner(k,t){const b=document.getElementById("banner");document.getElementById("bannerTxt").textContent=t;b.className="banner show";b.style.background=k==="baby"?"#5b2150":k==="ok"?"#14532d":"#4a1010";setTimeout(()=>b.classList.remove("show"),12000)}
 
 let bodyPart="torse";
 const PARTS={tete:"Tête",oeil:"Yeux",torse:"Torse",ventre:"Ventre",brasG:"Bras gauche",brasD:"Bras droit",jambeG:"Jambe gauche",jambeD:"Jambe droite"};
@@ -4454,6 +4456,7 @@ function wxSync(){
   const ph=document.querySelector(".phone");
   if(ph)ph.classList.toggle("wxShake",id==="seisme");
   if(WX.key!==null&&key!==WX.key&&e){try{showBanner("evt","⚠️ "+e.nom+" — "+e.desc)}catch(_){}}
+  if(WX.key&&!e){try{showBanner("ok","✅ "+evEndMsg(WX.key.split("|")[0]))}catch(_){}}
   const was=WX.key;WX.key=key;
   if(WX_IDS.includes(id)){if(!WX.raf||was!==key)wxStart(id)}else wxStop();
 }
