@@ -420,7 +420,7 @@ function renderGang(){
       <p class="mut">Membres : ${(g.members||[]).map(id=>((state.players||[]).find(x=>x.id===id)||{}).nomRp||id).join(", ")}</p>`;
     if(!g.storage.owned && g.bossId===p.id){
       h+=`<p>Premier stockage : 20 cases · 400$ · loyer 90$/sem</p>
-        <input id="stashName" placeholder="Nom du bâtiment Avakin (public)"/>
+        <input id="stashName" placeholder="Nom du bâtiment (public)"/>
         <input id="stashPhoto" placeholder="URL photo de l'appart"/>
         <button class="ok" onclick="buyStash()">Acheter le stockage</button>`;
     }else if(g.storage.owned){
@@ -532,8 +532,8 @@ function renderGang(){
       <button class="app" onclick="go('p-sante')"><i>➕</i><small>Santé</small></button>
       <button class="app" onclick="go('p-flic')"><i>📄</i><small>Amendés</small></button>
       <button class="app" onclick="go('p-bank')"><i>🏛️</i><small>Édelmont</small></button>
-      <button class="app" onclick="go('p-id')"><i>🪪</i><small>Identité</small></button>
-      <button class="app" onclick="go('p-id')"><i>⏰</i><small>Pointeuse</small></button>
+      <button class="app" onclick="go('p-moi')"><i>🪪</i><small>Identité</small></button>
+      <button class="app" onclick="go('p-moi')"><i>⏰</i><small>Pointeuse</small></button>
       <span id="coffreSlot"></span><span id="stashSlot"></span>
       <button class="app" onclick="go('p-map')"><i>🗺️</i><small>Carte</small></button>
       <button class="app" onclick="go('p-moi')"><i>💬</i><small>Moi</small></button>
@@ -617,9 +617,9 @@ function renderGang(){
       <div class="card" style="margin-top:10px;background:#f8fafc">
         <p class="mut"><b>Exemples de missions</b> (le staff choisit / adapte) :</p>
         <ul class="mut" style="margin:6px 0 0 18px;padding:0">
-          <li><b>Instagram</b> — story jolie photo du lieu + revendiquer la zone dans la légende, puis screen au staff.</li>
+          <li><b>Instagram</b> — story jolie photo du lieu + revendiquer la zone dans la légende, puis photo à la direction.</li>
           <li><b>Avakin</b> — photo de groupe in-game sur le spot choisi, tenues coordonnées.</li>
-          <li><b>Combo</b> — 1 screen Avakin du quartier + 1 story Insta qui tague le nom de la zone.</li>
+          <li><b>Combo</b> — 1 photo du quartier + 1 story qui tague le nom de la zone.</li>
         </ul>
       </div>
       <div id="gangBox"></div>
@@ -634,7 +634,7 @@ function renderGang(){
   </section>
   <section class="page" id="p-stories"><button class="chip" onclick="go('home')">← Accueil</button>
     <div class="card"><h3>Stories</h3>
-      <input id="storyTxt" placeholder="Texte" /><input id="storyImg" placeholder="URL screen" />
+      <input id="storyTxt" placeholder="Texte" /><input id="storyImg" placeholder="Lien de la photo" />
       <button onclick="postStory()">Poster</button><div id="stories"></div>
     </div>
   </section>
@@ -868,24 +868,6 @@ function renderGang(){
     </div>
   </section>
 <section class="page" id="p-id"><button class="chip" onclick="go('home')">← Accueil</button>
-    <div class="card" id="idCard"></div>
-    <div class="card">
-      <label class="mut">Photo de ton perso (carte d'identité)</label><input id="idPhoto" type="file" accept="image/*" onchange="pickIdPhoto(this)" />
-      <input id="idAvakin" placeholder="Nom Avakin Life" />
-      <input id="idIg" placeholder="Instagram" />
-      <input id="idJobAvakin" placeholder="Métier RP Avakin Life (ex: Serveur Loft)" />
-      <p class="mut">Pas d’API Avakin : tu déclares le métier in-game, le staff valide avec un screen du lieu de travail.</p>
-      <button class="ok" onclick="saveId()">Mettre à jour la carte</button>
-      <button onclick="verifyAvakinJob()">Staff : valider le métier (screen OK)</button>
-    </div>
-    <div class="card">
-      <h3>Pointeuse Avakin</h3>
-      <p class="mut">On ne peut pas voir s'ils sont in-game. Chaque jour : screen du lieu de taf + validation staff. Sinon pas de salaire.</p>
-      <div id="workBox"></div>
-      <input id="workShot" placeholder="URL du screen Avakin (lieu de travail)" />
-      <button class="ok" onclick="clockWork()">Pointer aujourd'hui</button>
-      <div id="workStaff"></div>
-    </div>
   </section>
   <section class="page" id="p-coffre"><button class="chip" onclick="go('home')">← Accueil</button>
     <div class="card">
@@ -896,10 +878,29 @@ function renderGang(){
   </section>
   <section class="page" id="p-moi"><button class="chip" onclick="go('home')">← Accueil</button>
     <div class="card" id="fiche"></div>
+    <div class="card" id="idCard"></div>
     <div class="card">
-      <h3>Persos</h3>
-      <div class="row"><input id="nomRp" placeholder="Nom RP" /><input id="nomAvakin" placeholder="Avakin" /></div>
-      <input id="photo" placeholder="URL photo" /><input id="ig" placeholder="IG" />
+      <label class="mut">Photo de ta carte d'identité</label><input id="idPhoto" type="file" accept="image/*" onchange="pickIdPhoto(this)" />
+      <input id="idAvakin" placeholder="Surnom" />
+      <input id="idIg" placeholder="Pseudo réseau social" />
+      <input id="idJobAvakin" placeholder="Ton métier (ex: Serveur au Loft)" />
+      <p class="mut">Tu déclares ton métier. La direction le confirme après vérification sur ton lieu de travail.</p>
+      <button class="ok" onclick="saveId()">Mettre à jour la carte</button>
+      <button onclick="verifyAvakinJob()">Direction : valider le métier</button>
+    </div>
+    <div class="card">
+      <h3>Pointeuse</h3>
+      <p class="mut">Pointe chaque jour depuis ton lieu de travail. Ta direction valide ta présence : sans validation, pas de salaire.</p>
+      <div id="workBox"></div>
+      <input id="workShot" placeholder="Lien de la photo de ton poste de travail" />
+      <button class="ok" onclick="clockWork()">Pointer aujourd'hui</button>
+      <div id="workStaff"></div>
+    </div>
+  
+    <div class="card">
+      <h3>Nouveau personnage</h3>
+      <div class="row"><input id="nomRp" placeholder="Nom RP" /><input id="nomAvakin" placeholder="Surnom" /></div>
+      <input id="photo" placeholder="URL photo" /><input id="ig" placeholder="Réseau" />
       <select id="genre"><option value="femme">Femme</option><option value="homme">Homme</option></select>
       <select id="jobNew"></select>
       <button onclick="addPlayer()">Ajouter</button>
@@ -912,7 +913,7 @@ function renderGang(){
         <button onclick="nextDay()">Jour +</button>
         <button onclick="nextDay()">Jour / Nuit</button>
       </div>
-      <div class="card" style="margin-top:10px" id="cloudCard">
+      <div class="card" style="margin-top:10px;display:none" id="cloudCard">
         <h3>Serveur gratuit (24h/24)</h3>
         <p class="mut">Plus besoin de laisser le téléphone ouvert. Une base Firebase gratuite = la même ville pour tous.</p>
         <ol class="mut" style="padding-left:18px">
@@ -1054,13 +1055,13 @@ const MEDS=[
   {id:"vitamines",nom:"Vitamines",soigne:[],prix:10}
 ];
 const AUTO_MISSIONS=[
-  {titre:"Livraison express",desc:"Livre cet objet au rooftop Avakin. Envoie un screen sur place.",argent:80},
-  {titre:"Nettoyer les murs",desc:"Va au bâtiment tagué et prends un screen des murs nettoyés.",argent:50},
-  {titre:"Fouille poubelle",desc:"Fouille la poubelle du parc. Screen de l’endroit.",argent:40,objet:"Objet trouvé"},
-  {titre:"Courses urgentes",desc:"Va à l’épicerie in-game et screen ton panier.",argent:35},
-  {titre:"Affiche pub",desc:"Colle une affiche au club. Screen du mur.",argent:55},
+  {titre:"Livraison express",desc:"Livre cet objet au rooftop. Envoie une photo sur place.",argent:80},
+  {titre:"Nettoyer les murs",desc:"Va au bâtiment tagué et prends une photo des murs nettoyés.",argent:50},
+  {titre:"Fouille poubelle",desc:"Fouille la poubelle du parc. Photo de l’endroit.",argent:40,objet:"Objet trouvé"},
+  {titre:"Courses urgentes",desc:"Va à l’épicerie et photographie ton panier.",argent:35},
+  {titre:"Affiche pub",desc:"Colle une affiche au club. Photo du mur.",argent:55},
   {titre:"Promener le chien",desc:"Screen avec un animal / dans un parc Avakin.",argent:30},
-  {titre:"Livrer une lettre",desc:"Donne la lettre au destinataire. Screen ensemble.",argent:45,objet:"Lettre / preuve"}
+  {titre:"Livrer une lettre",desc:"Donne la lettre au destinataire. Photo ensemble.",argent:45,objet:"Lettre / preuve"}
 ];
 const ITEM_CATALOG=[
   {id:"cle",nom:"Clé d’appart",slots:1},
@@ -1517,7 +1518,7 @@ function claimTerr(){
 function expandTerr(){
   const p=selected();if(!p)return;
   const g=myGang(p);if(!g||g.chief!==p.id&&state.mode!=="arbitre"){alert("Chef seulement");return}
-  if(!g.canExpand){alert("Fais d’abord une mission Avakin (photo lieu) validée par le staff");return}
+  if(!g.canExpand){alert("Fais d’abord une mission validée par la direction");return}
   if(p.argent<1500){alert("1500$");return}
   p.argent-=1500;g.r=Math.min(28,(g.r||8)+4);g.canExpand=false;
   p.heat=Math.min(100,(p.heat||0)+20);
@@ -1687,7 +1688,9 @@ function grantStart(pl){if(!pl||pl.dead||pl.gotStart)return;pl.argent=(pl.argent
 function stripDemos(s){
   if(!s||!s.players)return s;
   s.players.forEach(grantStart);
+  const _pg=s.purged||[];
   s.players=s.players.filter(pl=>{
+    if(_pg.indexOf(pl.id)>=0)return false;
     const n=(pl.nomRp||"").toLowerCase();
     return pl.id!=="viki"&&pl.id!=="lola"&&n!=="viki"&&n!=="lola";
   });
@@ -1751,6 +1754,7 @@ function mergeState(local,remote){
   const lw=local.world||{}, rw=remote.world||{};
   out.world=Object.assign({}, (lw.rev||0)>=(rw.rev||0)?rw:lw, (lw.rev||0)>=(rw.rev||0)?lw:rw);
   out.gangs=mergeGangs(local.gangs,remote.gangs);
+  out.purged=Array.from(new Set([].concat(remote.purged||[],local.purged||[])));
   out.sales=mergeList(local.sales,remote.sales,s=>s&&s.id);
   out.journal=mergeList(local.journal,remote.journal,j=>JSON.stringify(j)).slice(0,80);
   out.codes=(function(){const m={};[].concat(remote.codes||[],local.codes||[]).forEach(c=>{if(!c)return;const o=m[c.id];if(!o)m[c.id]=Object.assign({},c,{used:Object.assign({},c.used)});else{o.used=Object.assign({},o.used,c.used);if(c.del)o.del=true}});return Object.values(m)})();
@@ -1959,6 +1963,29 @@ function log(msg,ids){state.log.unshift({t:`J${state.jour} — ${msg}`,vis:ids||
 function notif(msg,ids){state.notifs.unshift({t:`J${state.jour} — ${msg}`,vis:ids||null});state.notifs=state.notifs.slice(0,30)}
 function needArb(){if(state.mode!=="arbitre"||!staffUnlocked()){alert("Staff seulement");return false}return true}
 
+
+function staffDelPlayers(){
+  if(!staffNeed())return;
+  const ids=Array.from(document.querySelectorAll(".stfDelChk:checked")).map(x=>x.value);
+  if(!ids.length){alert("Coche au moins un personnage");return}
+  const noms=ids.map(id=>(state.players.find(x=>x.id===id)||{}).nomRp||"?").join(", ");
+  if(!confirm("Supprimer définitivement : "+noms+" ?\nPersonnage, argent, objets, tout sera effacé.")){return}
+  state.purged=Array.from(new Set([].concat(state.purged||[],ids)));
+  state.players=state.players.filter(p=>ids.indexOf(p.id)<0);
+  state.sms=(state.sms||[]).filter(m=>ids.indexOf(m.from)<0&&ids.indexOf(m.to)<0);
+  (state.gangs||[]).forEach(g=>{
+    ["members","membres","ids"].forEach(k=>{if(Array.isArray(g[k]))g[k]=g[k].filter(x=>ids.indexOf(x)<0)});
+    ["bossId","chief"].forEach(k=>{if(ids.indexOf(g[k])>=0)g[k]=null});
+  });
+  if(ids.indexOf(state.selected)>=0)state.selected=(state.players[0]||{}).id||null;
+  ids.forEach(id=>{delete snapPl[id];try{fetch(cityBase()+"/pl/"+id+".json",{method:"DELETE"})}catch(e){}});
+  save();notif("Supprimé : "+noms);
+}
+function staffDelHtml(){
+  return '<h4>Supprimer des personnages</h4><p class="mut">Coche un ou plusieurs personnages puis valide. Ils disparaissent pour tout le monde.</p>'
+   +(state.players||[]).map(p=>'<label class="item" style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="stfDelChk" value="'+p.id+'"/> <span>'+p.nomRp+(p.dead?' (mort)':'')+'</span></label>').join("")
+   +'<button class="danger" onclick="staffDelPlayers()">Supprimer la sélection</button>';
+}
 function staffNeed(){if(state.mode!=="arbitre"||!staffUnlocked()){alert("Passe en mode Staff");return false}return true}
 function staffWho(){const id=document.getElementById("staffTarget")?.value||state.selected;return state.players.find(x=>x.id===id)}
 function qMoney(id,dir){
@@ -2256,14 +2283,14 @@ function nextDay(auto){
       else if(p.workOk){
         p.argent+=job.salaire;
         p.workStreak=(p.workStreak||0)+1;p.workMiss=0;
-        notif("Salaire +"+job.salaire+"$ · presence Avakin OK ("+p.workStreak+"j)",[p.id]);
+        notif("Salaire +"+job.salaire+"$ · présence validée ("+p.workStreak+"j)",[p.id]);
       }else{
         p.workMiss=(p.workMiss||0)+1;p.workStreak=0;
         notif("Absent au taf Avakin — pas de salaire ("+p.workMiss+" absence)",[p.id]);
         if(p.workMiss===3) notif("3 absences : dernier avertissement",[p.id]);
         if(p.workMiss>=5 && p.job!=="chomeur"){
           p.job="chomeur";p.jobVerified=false;p.jobAvakin="";
-          notif(p.nomRp+" licencie (5 absences sans screen)",[p.id]);
+          notif(p.nomRp+" licencie (5 absences sans justificatif)",[p.id]);
         }
       }
     }
@@ -2543,7 +2570,7 @@ function askMission(){
   let t=AUTO_MISSIONS[Math.floor(Math.random()*AUTO_MISSIONS.length)];
   let deal="";
   if(Math.random()<0.4){
-    const pack=[{titre:"Livraison Cache",desc:"Mini-jeu + screen Avakin/Insta chez le vendeur caché.",argent:40,deal:"cache-discount"},
+    const pack=[{titre:"Livraison Cache",desc:"Mini-jeu + photo chez le vendeur caché.",argent:40,deal:"cache-discount"},
       {titre:"Test antivirus Nova",desc:"Mini-jeu Matrix light + story Insta du QG Nova.",argent:50,deal:"nova-discount"},
       {titre:"Colis flash Cache",desc:"Photo d’arme RP in-game. Débloque un article 1h.",argent:30,deal:"cache-new"},
       {titre:"Drop fantôme Nova",desc:"Screen glitch + code. Article Nova 1h.",argent:45,deal:"nova-new"}][Math.floor(Math.random()*4)];
@@ -2561,7 +2588,7 @@ function ensureShopCode(kind,val){
   if(kind==="nova")state.novaCodes=list;else state.secretCodes=list;
 }
 function launchMission(){if(!needArb())return;{const k=(document.getElementById("mCodeKind")||{}).value,v=(document.getElementById("mCodeVal")||{}).value;if(k&&v)ensureShopCode(k,v)}const titre=document.getElementById("mTitre").value.trim();if(!titre)return;const deal=(document.getElementById("mDeal")||{}).value||"";state.missions.unshift({id:uid(),titre,desc:document.getElementById("mDesc").value.trim(),photo:document.getElementById("mPhoto").value.trim(),cible:document.getElementById("mCible").value,argent:+document.getElementById("mArgent").value||0,objet:document.getElementById("mObjet").value.trim(),codeKind:(document.getElementById("mCodeKind")||{}).value||"",codeVal:((document.getElementById("mCodeVal")||{}).value||"").trim().toUpperCase(),important:document.getElementById("mImportant").checked,deal,preuves:{},done:{},failed:{}});save()}
-function sendProof(mid){const p=selected();if(!p||bloque(p))return;const m=state.missions.find(x=>x.id===mid);const url=prompt("URL screen Avakin");if(!url)return;m.preuves[p.id]=url;save()}
+function sendProof(mid){const p=selected();if(!p||bloque(p))return;const m=state.missions.find(x=>x.id===mid);const url=prompt("Lien de la photo de preuve");if(!url)return;m.preuves[p.id]=url;save()}
 function placeWeapon(slot){
   const p=selected();if(!p)return;
   p.worn=p.worn||{};
@@ -3324,14 +3351,14 @@ function clockWork(){
   const url=(document.getElementById("workShot").value||"").trim();
   if(!url){alert("Colle le lien du screen Avakin (lieu de taf)");return}
   p.workShot=url;p.workWait=true;p.workOk=false;
-  notif(p.nomRp+" a pointe — staff doit valider le screen",[p.id]);
+  notif(p.nomRp+" a pointe — la direction doit valider la preuve",[p.id]);
   save();
 }
 function staffWork(pid,ok){
   if(!needArb())return;
   const t=state.players.find(x=>x.id===pid);if(!t)return;
   if(ok){t.workOk=true;t.workWait=false;notif("Presence validee : "+t.nomRp,[t.id])}
-  else {t.workOk=false;t.workWait=false;t.workShot="";notif("Screen refuse : "+t.nomRp,[t.id])}
+  else {t.workOk=false;t.workWait=false;t.workShot="";notif("Preuve refusée : "+t.nomRp,[t.id])}
   save();
 }
 function staffSawInGame(pid){
@@ -4564,7 +4591,7 @@ function render(){
   if(wb){
     if(!p)wb.innerHTML="<p class='mut'>Choisis un joueur</p>";
     else{
-      const st=p.workOk?"Presence validee — salaire OK":p.workWait?"Screen envoye — attente staff":"Pas pointe aujourd'hui";
+      const st=p.workOk?"Presence validee — salaire OK":p.workWait?"Preuve envoyée — attente de la direction":"Pas pointe aujourd'hui";
       wb.innerHTML="<p><b>"+st+"</b></p><p class='mut'>Metier : "+(p.jobAvakin||jobOf(p).nom)+" · serie "+(p.workStreak||0)+"j · absences "+(p.workMiss||0)+"/5"+(p.workShot?("<br>Screen : "+p.workShot):"")+"</p>";
     }
   }
@@ -4579,7 +4606,7 @@ function render(){
 
   const idc=document.getElementById("idCard");
   if(idc&&p)idc.innerHTML=`<p class="mut">CARTE ÉDELMONT / AVAKIN</p>${photoOf(p)?`<img src="${photoOf(p)}" style="width:100%;max-height:220px;object-fit:cover;object-position:50% 20%;border-radius:10px">`:"<p class='mut'>Photo manquante — ajoute-la ci-dessous</p>"}
-    <p><b>${p.nomRp}</b></p><p class="mut">Avakin : ${p.nomAvakin||"—"}<br>Insta : ${p.ig||"—"}<br>N° RP : ${p.phone}<br>Métier Avakin : ${p.jobAvakin||jobOf(p).nom} ${p.jobVerified?"· validé staff":"· en attente screen"}</p>`;
+    <p><b>${p.nomRp}</b></p><p class="mut">Surnom : ${p.nomAvakin||"—"}<br>Insta : ${p.ig||"—"}<br>N° RP : ${p.phone}<br>Métier : ${p.jobAvakin||jobOf(p).nom} ${p.jobVerified?"· validé staff":"· en attente screen"}</p>`;
   const slot=document.getElementById("coffreSlot");
   const hasVault=!!(p&&p.house&&p.coffre&&["cadenas","code","blinde"].includes(p.coffre));
   if(slot)slot.innerHTML=hasVault?'<button class="app" id="appCoffre" onclick="go(\'p-coffre\')"><i>🔐</i><small>Coffre</small></button>':'';
@@ -5190,6 +5217,7 @@ function renderStaffPlus(){
     +'<button onclick="stfBank(\''+g.id+'\')">Caisse…</button> '+Object.keys(g.zones||{}).map(r=>'<button class="danger" onclick="stfFree(\''+g.id+'\',\''+r+'\')">Libérer '+(TRR(r)||{nom:r}).nom+'</button>').join(" ")+'</div>').join("")||'<p class="mut">Aucun gang.</p>';
   h+=(state.sales||[]).filter(s=>["run","ask"].includes(s.status)).map(s=>'<div class="item"><span>Livraison '+s.items.length+' colis ('+s.status+')</span><button onclick="stfSale(\''+s.id+'\')">Annuler</button></div>').join("");
   h+=(state.zoneEvents||[]).filter(e=>!e.done).map(e=>'<div class="item"><span>'+ZEV[e.type].nom+' · '+(TRR(e.rid)||{}).nom+'</span><button onclick="stfEv(\''+e.id+'\')">Résoudre</button></div>').join("");
+  h+=staffDelHtml();
   h+='<h4>Sauvegarde</h4><button class="ok" onclick="exportSave()">⬇ Exporter la partie</button><label class="mut">Importer un fichier<input type="file" accept=".json" onchange="importSave(this)"/></label><button onclick="restoreAuto()">Restaurer la sauvegarde auto (dernier jour)</button>';
   if(box.dataset.h!==h){box.dataset.h=h;box.innerHTML=h}
 }
