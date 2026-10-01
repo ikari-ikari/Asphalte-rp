@@ -5635,5 +5635,99 @@ function renderStaffMed(){
 }
 (function(){const _r=render;render=function(){_r();try{renderMed();renderStaffMed()}catch(e){console.error(e)}}})();
 </script>
+<style>
+#p-mrv{background:linear-gradient(180deg,#14110a,#0b0a07);color:#f3e9c8}
+#p-mrv .card{background:#1d1810;border-color:#5a4a1c;color:#f3e9c8}
+#p-mrv .mut,#p-mrv small{color:#b9a773}
+.mrvHead{display:flex;gap:12px;align-items:center}
+.mrvAv{width:54px;height:54px;border-radius:50%;background:#000;border:2px solid #c9a227;display:grid;place-items:center;font-size:28px;flex-shrink:0}
+.mrvLog p{margin:5px 0;font-size:.9rem}.mrvLog .me{color:#b9a773}.mrvLog .mr{color:#f5d56a}
+#mrvFx{position:fixed;inset:0;z-index:99;background:#000e;color:#7cfc9a;font:14px monospace;padding:30px;display:none;white-space:pre-wrap}
+</style>
+<script>
+/* ===== MRv — Victor Vince (Corpo) ===== */
+(function(){
+const $=id=>document.getElementById(id),ZONE=["t15","t16","t18"];
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const W=()=>{state.world=state.world||{};return state.world.mrv=state.world.mrv||{rich:20000,ctl:false}};
+const M=p=>p.mrv=p.mrv||{unlocked:false,met:false,log:[]};
+const U=p=>!!(p&&p.mrv&&p.mrv.unlocked),me=()=>selected(),isSt=()=>state.mode==="arbitre"&&staffUnlocked();
+const OFFERS=[
+{t:"Coursier discret",d:"Livre une mallette au rooftop. Photo, aucune question.",a:120,rep:0},
+{t:"Audit de banque",d:"Photographie l'entrée d'une banque d'Asphalte City et décris sa sécurité (RP).",a:200,rep:0},
+{t:"Pression amicale",d:"Fais signer un contrat de protection MRv à un commerçant (RP). Screen de la scène.",a:350,rep:1},
+{t:"Plateau télé",d:"Apparais dans un reportage TV/radio de la Corpo (story + screen).",a:500,rep:3}];
+function mk(pid,o){state.missions.unshift({id:uid(),titre:"MRv · "+o.t,desc:o.d,photo:"",cible:pid,argent:o.a||0,objet:o.o||"",important:true,preuves:{},done:{},failed:{},mrv:true,mrvNext:o.next||null})}
+function say(p,w,t){const m=M(p);m.log=(m.log||[]).concat([{w,t}]).slice(-8);p.rev=Date.now()}
+function unlock(p,why){const m=M(p);if(m.unlocked)return;m.unlocked=true;p.rev=Date.now();
+ notif("📲 Nouvelle application : MRv ("+why+")",[p.id]);actLog(p.nomRp+" débloque l'App MRv ("+why+")");
+ try{showBanner("ok","Une application inconnue vient d'apparaître : MRv")}catch(e){}save()}
+function fx(lines){const o=$("mrvFx");o.style.display="block";o.textContent="";let i=0;(function n(){if(i<lines.length){o.textContent+=lines[i++]+"\n";setTimeout(n,650)}else setTimeout(()=>o.style.display="none",1200)})()}
+const owned=()=>state.players.filter(x=>!x.dead);
+window.mrvTalk=function(i){const p=me();if(!p)return;const m=M(p),done=state.missions.filter(x=>x.mrv&&x.done&&x.done[p.id]).length;
+ const Q=["Me présenter","Je cherche du travail","Parlons affaires"];say(p,"me","Vous : "+Q[i]);
+ if(i===0){if(!m.met){m.met=true;say(p,"mr","MRv : Victor Vince. Vous avez trouvé ma porte, c'est déjà une information. Soyez bref. Le temps coûte.");notif("Le nord de l'île est maintenant « zone de MRv » sur ta carte.",[p.id])}
+  else say(p,"mr","MRv : Nous nous sommes déjà présentés. Ne me faites pas perdre mon temps.")}
+ else if(!m.met)say(p,"mr","MRv : On ne traite pas avec des inconnus. Présentez-vous.");
+ else if(i===1)say(p,"mr","MRv : Je ne donne pas de travail. Je vends des occasions. Le tableau est en dessous. Échouez, et vous disparaissez de mes registres.");
+ else say(p,"mr",done<1?"MRv : Le business, c'est la confiance. Vous n'en avez pas encore. Prouvez-vous.":"MRv : Efficacité totale, zéro explication. C'est ce que j'achète. Vous avez rempli "+done+" contrat(s).");
+ save()};
+window.mrvTake=function(i){const p=me(),o=OFFERS[i];if(!p||!o||!M(p).met)return;
+ if(state.missions.some(x=>x.mrv&&x.cible===p.id&&x.titre==="MRv · "+o.t&&!(x.done&&x.done[p.id])&&!(x.failed&&x.failed[p.id])))return;
+ mk(p.id,o);say(p,"mr","MRv : Contrat « "+o.t+" » réservé. Les preuves arrivent au staff. Ne me décevez pas.");save()};
+window.mrvSt=function(k){if(!needArb())return;const p=state.players.find(x=>x.id===$("mrvT").value);
+ if(k==="ctl"){W().ctl=!W().ctl;bumpWorld();save();return}
+ if(k==="rich"){W().rich=Math.max(0,+$("mrvRich").value||0);bumpWorld();save();return}
+ if(!p){alert("Choisis un joueur");return}
+ if(k==="on")unlock(p,"staff");
+ else if(k==="off"){M(p).unlocked=false;p.rev=Date.now();save()}
+ else if(k==="msg"&&$("mrvMsg").value.trim()){say(p,"mr","MRv : "+$("mrvMsg").value.trim());notif("MRv t'a écrit.",[p.id]);$("mrvMsg").value="";save()}
+ else if(k==="mission"&&$("mrvTt").value.trim()){mk(p.id,{t:$("mrvTt").value.trim(),d:$("mrvTd").value,a:+$("mrvTa").value||0});notif("MRv t'envoie une mission.",[p.id]);save()}
+ else if(k==="trail"){
+  mk(p.id,{t:"Le colis sans nom",d:"Un colis t'attend chez un contact. Récupère-le (photo).",a:60,next:{t:"La boîte aux lettres",d:"Dépose le colis où indiqué, récupère ce qu'on y laisse (photo).",a:80,o:"Fragment MRv Alpha"}});
+  mk(p.id,{t:"Le numéro barré",d:"Compose le numéro écrit sur le mur de l'impasse (screen).",a:60,next:{t:"Le coffre de la banque",d:"Montre le code à la banque d'Édelmont et prends une photo (screen).",a:80,o:"Fragment MRv Bêta"}});
+  notif("Deux pistes secrètes viennent d'apparaître dans tes missions.",[p.id]);save()}};
+const _v=validateMission;validateMission=function(mid,pid,r){const m=state.missions.find(x=>x.id===mid);_v(mid,pid,r);
+ if(m&&m.mrvNext&&m.done&&m.done[pid]){const n=m.mrvNext;m.mrvNext=null;mk(pid,n);notif("La piste continue… nouvelle mission secrète.",[pid]);save()}};
+const _go=go;go=function(id){const p=me();
+ if(id==="p-hack"&&p&&!U(p)&&hasItem(p,/^Fragment MRv Alpha/)&&hasItem(p,/^Fragment MRv B[êe]ta/)){
+  takeItem(p,/^Fragment MRv Alpha/);takeItem(p,/^Fragment MRv B[êe]ta/);_go(id);unlock(p,"fusion des fragments");
+  fx(["> Matrix : lancement…","> fusion Alpha + Bêta… OK","> signal chiffré détecté","> source : MRv","> application installée."]);return}
+ _go(id);if(id==="p-mrv")drawMrv(true)};
+function drawMrv(force){const box=$("mrvBox"),p=me();if(!box||!p)return;const m=M(p);
+ const done=state.missions.filter(x=>x.mrv&&x.done&&x.done[p.id]).length;
+ const mine=state.missions.filter(x=>x.mrv&&x.cible===p.id&&!(x.done&&x.done[p.id])&&!(x.failed&&x.failed[p.id]));
+ let h='<div class="card"><div class="mrvHead"><div class="mrvAv">🕴️</div><div><h3>Victor Vince · MRv</h3><p class="mut">Chef de la Corpo MRv · banques, sécurité privée, TV &amp; radio'+(W().ctl?' · <b style="color:#f5d56a">en direct</b>':'')+'<br>Réputation : '+done+'</p></div></div>'
+ +'<div class="mrvLog">'+(m.log||[]).map(l=>'<p class="'+l.w+'">'+esc(l.t)+'</p>').join("")+'</div>'
+ +'<button onclick="mrvTalk(0)">Me présenter</button><button onclick="mrvTalk(1)">Je cherche du travail</button><button onclick="mrvTalk(2)">Parlons affaires</button></div>'
+ +'<div class="card"><h3>Contrats</h3>'+(m.met?OFFERS.map((o,i)=>{const busy=mine.some(x=>x.titre==="MRv · "+o.t);
+  return '<div class="item"><span><b>'+esc(o.t)+'</b> · '+o.a+'$<br><small>'+esc(o.d)+'</small></span>'+(o.rep>done?'<small>Réputation '+o.rep+' requise</small>':busy?'<small>En cours</small>':'<button class="ok" onclick="mrvTake('+i+')">Réserver</button>')+'</div>'}).join(""):'<p class="mut">Présente-toi d\'abord à MRv.</p>')+'</div>';
+ if(!force&&box.dataset.h===h)return;const fo=document.activeElement;if(!force&&fo&&box.contains(fo)&&/INPUT|SELECT/.test(fo.tagName))return;box.dataset.h=h;box.innerHTML=h}
+function staffBox(){const b=$("mrvStaffBox");if(!b)return;const st=isSt();b.style.display=st?"block":"none";if(!st)return;
+ const k=owned().map(x=>x.id+x.nomRp).join("|");if(b.dataset.k!==k){const v=$("mrvT").value;b.dataset.k=k;$("mrvT").innerHTML=owned().map(x=>'<option value="'+x.id+'">'+esc(x.nomRp)+'</option>').join("");if(v)$("mrvT").value=v}
+ if(document.activeElement!==$("mrvRich"))$("mrvRich").value=W().rich;$("mrvCtlB").textContent=W().ctl?"Rendre le contrôle":"Prendre le contrôle"}
+function mrvRender(){const p=me(),st=isSt();
+ if(!$("mrvSlot")&&$("stashSlot"))$("stashSlot").insertAdjacentHTML("afterend",'<span id="mrvSlot"></span>');
+ if(p&&!st&&!p.dead&&!U(p)&&(p.argent||0)>=W().rich)unlock(p,"fortune");
+ const s=$("mrvSlot");if(s)s.innerHTML=(U(p)||st)?'<button class="app" onclick="go(\'p-mrv\')"><i>🕴️</i><small>MRv</small></button>':"";
+ staffBox();if($("p-mrv")&&$("p-mrv").classList.contains("on"))drawMrv()}
+const _r=render;render=function(){_r();try{mrvRender()}catch(e){console.error(e)}};
+/* carte : zone Corpo → zone MRv */
+const known=()=>{const p=me();return isSt()||!!(p&&p.mrv&&p.mrv.met)};
+const _dm=drawMapPin;drawMapPin=function(){_dm();const md=$("mapDots"),svg=md&&md.querySelector("svg");if(!svg)return;const k=known();let h="";
+ ZONE.forEach(id=>{const t=TRR(id);if(t)h+='<polygon points="'+t.poly.map(a=>a.join(",")).join(" ")+'" fill="'+(k?"#c9a227":"#64748b")+'" fill-opacity=".3" stroke="'+(k?"#f5d56a":"#94a3b8")+'" stroke-width=".4" stroke-dasharray="1.2 .6" style="pointer-events:none"/>'});
+ const c=TRR("t16");if(c)h+='<text x="'+c.x+'" y="'+(c.y-4.5)+'" text-anchor="middle" font-size="1.7" font-weight="700" fill="'+(k?"#f5d56a":"#e2e8f0")+'" stroke="#0b1220" stroke-width=".35" paint-order="stroke" font-family="sans-serif" style="pointer-events:none">'+(k?"Zone de MRv":"Zone d'une Corpo")+'</text>';
+ svg.insertAdjacentHTML("beforeend",h)};
+const _rz=renderZones;renderZones=function(){_rz();const box=$("zoneBox");if(!box||!ZONE.includes(selTerr))return;const k=known();
+ box.insertAdjacentHTML("afterbegin",'<div class="card"><h3>🕴️ '+(k?"Zone de MRv":"Territoire d'une Corpo")+'</h3><p class="mut">'+(k?"Victor Vince tient ces quartiers : banques, sécurité privée, TV et radio. Aucun gang ne peut les réclamer.":"Ce territoire appartient à une Corpo. Aucun gang ne peut le réclamer.")+'</p></div>')};
+const _zc=zClaim;zClaim=function(){if(ZONE.includes(selTerr)){alert("Territoire de Corpo : impossible à réclamer.");return}_zc()};
+/* DOM */
+const sec=document.createElement("section");sec.className="page";sec.id="p-mrv";
+sec.innerHTML='<button class="chip" onclick="go(\'home\')">← Accueil</button><div id="mrvBox"></div><div class="card" id="mrvStaffBox" style="display:none"><h3>🛡️ Staff · MRv</h3><select id="mrvT"></select><div class="staffGrid"><button onclick="mrvSt(\'on\')">Débloquer l\'App</button><button onclick="mrvSt(\'off\')">Retirer l\'App</button><button onclick="mrvSt(\'trail\')">Piste secrète</button><button id="mrvCtlB" onclick="mrvSt(\'ctl\')">Prendre le contrôle</button></div><label class="mut">Seuil de richesse ($)</label><input id="mrvRich" type="number"><button onclick="mrvSt(\'rich\')">Enregistrer le seuil</button><input id="mrvMsg" placeholder="Message au nom de MRv"><button onclick="mrvSt(\'msg\')">Envoyer</button><input id="mrvTt" placeholder="Titre de mission"><input id="mrvTd" placeholder="Description"><input id="mrvTa" type="number" placeholder="Récompense $"><button class="ok" onclick="mrvSt(\'mission\')">Lancer la mission</button></div>';
+$("p-bank").parentNode.appendChild(sec);
+const o=document.createElement("div");o.id="mrvFx";document.body.appendChild(o);
+try{render()}catch(e){}
+})();
+</script>
 </body>
 </html>
