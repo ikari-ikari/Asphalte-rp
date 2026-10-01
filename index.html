@@ -272,12 +272,22 @@ function staffEvent(){
   notif("Ville : "+e.nom+" — "+e.desc,(state.players||[]).map(x=>x.id));
   save();
 }
-const EV_END={tempete:"La tempête s'est calmée.",pluie:"L'orage s'est éloigné.",incendie:"L'incendie a été éteint.",seisme:"Les secousses ont cessé, la ville se remet du séisme.",greve:"La grève est terminée, le travail reprend.",fete:"La fête de quartier est terminée."};
-function evEndMsg(id){return EV_END[id]||"L'événement en ville est terminé."}
+const EV_END={
+ tempete:{t:"🌤️ MÉTÉO · Fin de la tempête",d:"Les vents faiblissent et le ciel se dégage sur Asphalte City. Les services reprennent peu à peu."},
+ pluie:{t:"🌦️ MÉTÉO · Fin de l'orage",d:"L'orage s'éloigne, la pluie cesse et les rues commencent à sécher."},
+ incendie:{t:"🚒 INFO · Fin de l'incendie",d:"Les pompiers ont maîtrisé le feu, la circulation est rétablie."},
+ seisme:{t:"🏙️ INFO · Fin du séisme",d:"Les secousses ont cessé. La ville évalue les dégâts et reprend son souffle."},
+ greve:{t:"✊ INFO · Fin de la grève",d:"Un accord est trouvé, le travail reprend partout en ville."},
+ fete:{t:"🎉 INFO · Fin de la fête de quartier",d:"La musique s'arrête et les rues se vident doucement."}
+};
+function evEndObj(id){return EV_END[id]||{t:"ℹ️ INFO · Fin de l'événement",d:"La situation revient à la normale en ville."}}
+function evEndMsg(id){const o=evEndObj(id);return o.t+" — "+o.d}
 function staffEndEvent(){
   if(!needArb())return;
   state.world=state.world||{};const _old=state.world.event;state.world.event=null;state.world.jobsPaused=false;
-  bumpWorld();actLog("Fin de l'événement");notif(evEndMsg(_old&&_old.id),(state.players||[]).map(x=>x.id));save();
+  bumpWorld();actLog("Fin de l'événement");notif(evEndMsg(_old&&_old.id),(state.players||[]).map(x=>x.id));
+  if(_old){state.news=(state.news||[]).filter(n=>n.tag!=="ev:"+_old.id);const _o=evEndObj(_old.id);pushNews(_o.t+" : "+_o.d,"evEnd")}
+  save();
 }
 function staffJobsOn(){
   if(!needArb())return;
@@ -1224,6 +1234,9 @@ const NOVA_SHOP=[
   {id:"av1",nom:"Antivirus pique-assiette",prix:800,slots:1,kind:"av",blocks:"Virus pique-assiette",info:"Bloque le virus pique-assiette sur ton téléphone. Max 2 protections."},
   {id:"av2",nom:"Antivirus sangsue",prix:1600,slots:1,kind:"av",blocks:"Virus sangsue",info:"Bloque le virus sangsue. Ne protège pas contre le virus roi."},
   {id:"av3",nom:"Antivirus roi",prix:3500,slots:1,kind:"av",blocks:"Virus roi",info:"Seul bouclier contre le virus roi. Prend 1 des 2 slots protection."},
+  {id:"mx_safe",nom:"Matrix : contrecoup réduit",prix:5000,slots:0,kind:"mxup",info:"Amélioration permanente de Matrix : bien moins de risques au contrecoup (ordi grillé, chaleur, police). Achat unique."},
+  {id:"mx_pick",nom:"Matrix : manipulateur",prix:4000,slots:0,kind:"mxup",info:"Amélioration permanente : tu choisis toi-même le mini-jeu de piratage. Sans elle, le mini-jeu est tiré au hasard. Achat unique."},
+  {id:"mx_retry",nom:"Matrix : seconde chance",prix:6389,slots:0,kind:"mxup",info:"Amélioration permanente : si tu rates le mini-jeu, tu peux retenter une fois. Achat unique."},
   {id:"mal1",nom:"Malware bouclier",prix:1200,slots:1,kind:"av",blocks:"any",info:"Protection générique faible : réduit les dégâts d’un premier virus, puis casse."}
 ];
 const RECIPES=[
@@ -1782,6 +1795,7 @@ function mergeState(local,remote){
   out.rev=Math.max(local.rev||0,remote.rev||0);
   const lw=local.world||{}, rw=remote.world||{};
   out.world=Object.assign({}, (lw.rev||0)>=(rw.rev||0)?rw:lw, (lw.rev||0)>=(rw.rev||0)?lw:rw);
+  {const _nw=(lw.rev||0)>=(rw.rev||0)?lw:rw;if(!_nw.event)out.world.event=null}
   out.gangs=mergeGangs(local.gangs,remote.gangs);
   out.purged=Array.from(new Set([].concat(remote.purged||[],local.purged||[])));
   out.sales=mergeList(local.sales,remote.sales,s=>s&&s.id);
@@ -2893,6 +2907,13 @@ function buy(kind,id){
   if(item.kind==="av"&&protections(p).length>=2){alert("Max 2 protections sur le téléphone");return}
   const prix=shopPrice(item,kind==="nova"?"nova":kind==="illegal"?"cache":"legal");
   if(p.argent<prix)return;
+  if(item.kind==="mxup"){
+    const key=item.id.slice(3);p.mx=p.mx||{};
+    if(p.mx[key]){alert("Amélioration déjà installée.");return}
+    p.argent-=prix;p.mx[key]=true;p.rev=Date.now();txBuy(p,item,prix);
+    p.heat=Math.min(100,(p.heat||0)+3);
+    notif("Nova : "+item.nom+" installée sur Matrix.",[p.id]);save();return;
+  }
   const packed=item.kind==="food"||item.kind==="drink"||item.kind==="energy"||item.kind==="med"||item.item==="preserv"||isFoodName(item.nom)||isDrinkName(item.nom)||isEnergyName(item.nom)||isCondoName(item.nom)||isGunName(item.nom)||techName(item.nom);
   if(!packed && slotsUsed(p)+(item.slots||1)>maxSlots(p)){alert("Pas de place sur le corps");return}
   p.argent-=prix;
@@ -3069,7 +3090,7 @@ function renderTestBox(){
   document.addEventListener("dragstart",e=>{if(e.target.tagName==="IMG"&&off())e.preventDefault()});
 })();
 /* ===== Matrix : virus -> programmes ===== */
-const ATK_DEF={argent:{i:"💰",n:"Voler l’argent"},infos:{i:"🪪",n:"Voler des infos"},sms:{i:"💬",n:"Copier les messages"},banque:{i:"🏦",n:"Bloquer la banque 1 jour"},journal:{i:"🗂️",n:"Fouiller l’historique du gang"},carnets:{i:"📒",n:"Fouiller ses contacts"}};
+const ATK_DEF={argent:{i:"💰",n:"Voler l’argent"},infos:{i:"🪪",n:"Voler des infos"},sms:{i:"💬",n:"Espionnage des SMS"},banque:{i:"🏦",n:"Bloquer la banque 1 jour"},journal:{i:"🗂️",n:"Fouiller l’historique du gang"},carnets:{i:"📒",n:"Fouiller ses contacts"}};
 const VIRUS_ATK={pique:["argent","infos"],sangsue:["argent","sms"],roi:["argent","banque","carnets","journal"],fantome:["infos","sms","carnets","journal"]};
 const VIRUS_UI={none:{n:"NO SIGNAL",c:"#94a3b8",bg:"#0b0f14",i:"📡",t:"Aucun virus chargé"},pique:{n:"PIQUE-ASSIETTE",c:"#4ade80",bg:"#03150b",i:"🥪",t:"Petits vols discrets"},sangsue:{n:"SANGSUE",c:"#f43f5e",bg:"#1a0509",i:"🩸",t:"Draine l’argent, très visible"},roi:{n:"VIRUS ROI",c:"#fbbf24",bg:"#1a1204",i:"👑",t:"Gros pillage, chaleur maximale"},fantome:{n:"FANTÔME",c:"#67e8f9",bg:"#04141a",i:"👻",t:"Espionnage furtif"}};
 function virusKey(n){n=n||"";return /pique/i.test(n)?"pique":/sangsue/i.test(n)?"sangsue":/roi/i.test(n)?"roi":/fant/i.test(n)?"fantome":/virus/i.test(n)?"pique":"none"}
@@ -3095,8 +3116,9 @@ function renderMatrix(){
   mon.dataset.v=v.key;mon.style.setProperty("--c",U.c);mon.style.setProperty("--bg",U.bg);
   document.getElementById("pcTitle").textContent="MATRIX OS · "+U.n;
   document.getElementById("pcHero").innerHTML=`<i>${U.i}</i><b>${U.n}</b><small>${v.all?"Tous programmes (staff)":U.t}</small>`;
+  const pcUp=(p.mx&&(p.mx.safe||p.mx.pick||p.mx.retry))?" · UPG "+["safe","pick","retry"].filter(k=>p.mx[k]).map(k=>({safe:"CONTRECOUP-",pick:"MANIPULATEUR",retry:"2E CHANCE"})[k]).join("+"):"";
   const pcInfo=pc?`ORDI ${pc.atk||0}/4 · INJECTEUR ${pc.injLeft||0}/2 · ${pc.armed?"ARMÉ":"NON ARMÉ"}`:"AUCUN ORDINATEUR";
-  document.getElementById("pcStatus").textContent=st?"MODE STAFF · aucune pénalité · "+pcInfo:pcInfo+(p.lastHackJour===state.jour?" · COOLDOWN":"");
+  document.getElementById("pcStatus").textContent=st?"MODE STAFF · aucune pénalité · "+pcInfo:pcInfo+pcUp+(p.lastHackJour===state.jour?" · COOLDOWN":"");
   const al=hackAllowed(p);
   if(!al.includes(window._hackAct))window._hackAct=al[0]||null;
   const sel=document.getElementById("hackAct");
@@ -3122,13 +3144,14 @@ setInterval(mxTick,110);
 function canHack(p){return state.mode==="arbitre"||(hasItem(p,/ordinateur/i)&&hasItem(p,/injecteur/i)&&hasItem(p,/clé USB virus/i))}
 function runHack(p,t,act){
   const ST=state.mode==="arbitre";
+  const SK=(p.mx&&p.mx.safe)?0.4:1;
   if(ST)notif("🛡️ Test staff : aucune pénalité (matos, chaleur, police, alertes)",[p.id]);
   const force=!ST&&p.lastHackJour===state.jour;
   if(force){
     p.heat=Math.min(100,(p.heat||0)+(ST?0:25));
     p.hackForce=(p.hackForce||0)+1;
     notif("Tu forces le cooldown Matrix…",[p.id]);
-    if(Math.random()<0.35+p.hackForce*0.15){
+    if(Math.random()<(0.35+p.hackForce*0.15)*SK){
       takeItem(p,/ordinateur/i);takeItem(p,/injecteur/i);takeItem(p,/clé USB virus/i);
       !ST&&arrest(p,2,"surcharge Matrix");
       bless(p,"Fièvre","surcharge");
@@ -3137,7 +3160,7 @@ function runHack(p,t,act){
     }
   }
   if(!ST){p.lastHackJour=state.jour;p.hackTries=(p.hackTries||0)+1}
-  const boom=12+p.hackTries*10;
+  const boom=(12+p.hackTries*10)*SK;
   if(!ST&&Math.random()*100<boom){
     takeItem(p,/ordinateur/i);takeItem(p,/injecteur/i);takeItem(p,/clé USB virus/i);
     notif("Tout a grillé (ordi, injecteur, clé)",[p.id]);save();return;
@@ -3152,8 +3175,8 @@ function runHack(p,t,act){
   if(act!=="sms"&&act!=="journal"&&!ST&&Math.random()<0.2+_fw*0.15){p.heat=Math.min(100,(p.heat||0)+(ST?0:10));notif("Piratage détecté. Origine : "+p.nomRp+" ("+p.phone+")",[t.id])}
   const prot=protections(t);
   const virusName=(hasItem(p,/^Ordinateur/i)||{}).armed||(ST?(window._hackSimName||"virus"):"virus");
-  {const vh=/roi/i.test(virusName)?30:/sangsue/i.test(virusName)?15:5;p.heat=Math.min(100,(p.heat||0)+(ST?0:vh));
-   if(/roi/i.test(virusName)&&Math.random()<0.25)!ST&&arrest(p,1,"virus roi tracé");else if(/sangsue/i.test(virusName)&&Math.random()<0.1)!ST&&arrest(p,1,"virus sangsue tracé")}
+  {const vh=Math.round((/roi/i.test(virusName)?30:/sangsue/i.test(virusName)?15:5)*SK);p.heat=Math.min(100,(p.heat||0)+(ST?0:vh));
+   if(/roi/i.test(virusName)&&Math.random()<0.25*SK)!ST&&arrest(p,1,"virus roi tracé");else if(/sangsue/i.test(virusName)&&Math.random()<0.1*SK)!ST&&arrest(p,1,"virus sangsue tracé")}
   const block=prot.find(av=>av.blocks==="any"||(av.blocks&&virusName&&av.blocks===virusName)||/antivirus/i.test(av.name));
   if(block){
     t.items=t.items.filter(i=>i.id!==block.id);
@@ -3162,7 +3185,7 @@ function runHack(p,t,act){
   }
   if(act==="argent"){const _vk=virusKey(virusName),_cap=_vk==="pique"?50+Math.floor(Math.random()*40):_vk==="roi"?200+Math.floor(Math.random()*300):80+Math.floor(Math.random()*120);const vol=Math.min(t.argent,Math.ceil(t.argent*(_vk==="roi"?0.35:0.2)),_cap);if(t.id===p.id){window._hackVol=0;notif("Test staff sur toi-même : choisis un autre joueur pour voir le transfert.",[p.id])}else{t.argent-=vol;p.argent+=vol;window._hackVol=vol;}notif("Vol "+vol+"$ chez "+t.nomRp,[p.id]);notif("Hack : -"+vol+"$",[t.id])}
   else if(act==="infos"){p.stolen=p.stolen||[];p.stolen.push(t.nomRp+" · "+t.phone+" · "+jobOf(t).nom);notif("Infos de "+t.nomRp,[p.id])}
-  else if(act==="sms"){p.stolenSms=(state.sms||[]).filter(s=>s.from===t.id||s.to===t.id).slice(0,8);notif((p.stolenSms.length)+" SMS copiés",[p.id])}
+  else if(act==="sms"){notif("Espionnage des SMS réussi : choisis un contact à écouter (30 s).",[p.id])}
   else if(act==="banque"){t.banqueOff=Math.max(t.banqueOff||0,1);notif("Banque bloquée : "+t.nomRp,[p.id]);notif("Banque bloquée 1 jour",[t.id])}
   else if(act==="journal"){const gp=G_of(p),gt=G_of(t);if(gp&&gt&&gp.id===gt.id&&G_boss(gp,p)){const n=revealAudit(gp,t.id,1);notif(n?n+" trace(s) suspecte(s) de "+t.nomRp+" révélée(s) !":"Journal de "+t.nomRp+" : rien de suspect.",[p.id])}else notif("Cette cible n'est pas un membre de ton gang.",[p.id])}
   else if(act==="carnets"){
@@ -3176,16 +3199,53 @@ function runHack(p,t,act){
   }
   if(act!=="sms"&&act!=="journal")!ST&&hackAlert(t,"hit");
   consumeHackGear(p);
-  p.heat=Math.min(100,(p.heat||0)+(ST?0:18));save();
+  p.heat=Math.min(100,(p.heat||0)+(ST?0:Math.round(18*SK)));save();
   try{hackSuccessFx(p,t,act,window._hackVol||0)}catch(e){console.error(e)}
+}
+
+/* ===== Espionnage des SMS : liste de contacts (noms seulement) puis 30 s de lecture ===== */
+const SPY={iv:null,list:[],tid:null};
+function spyEsc(x){return String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function spyClose(){if(SPY.iv)clearInterval(SPY.iv);SPY.iv=null;const b=document.getElementById("spyBox");if(b)b.remove()}
+function spyOpen(tid){
+  spyClose();
+  const t=(state.players||[]).find(x=>x.id===tid);if(!t)return;
+  const ids=new Set(Object.keys(t.contacts||{}));
+  (state.sms||[]).forEach(m=>{if(m.from===t.id&&m.to)ids.add(m.to);if(m.to===t.id&&m.from)ids.add(m.from)});
+  ids.delete(t.id);
+  SPY.tid=t.id;SPY.list=[...ids].map(id=>state.players.find(x=>x.id===id)).filter(Boolean);
+  const box=document.createElement("div");box.id="spyBox";
+  box.style.cssText="position:fixed;inset:0;z-index:80;background:#020a05f5;color:#4ade80;font-family:monospace;padding:14px;overflow:auto";
+  document.body.appendChild(box);
+  const head='<h3 style="margin:0 0 8px">💬 ESPIONNAGE DES SMS</h3>';
+  if(!SPY.list.length){box.innerHTML=head+'<p>'+spyEsc(t.nomRp)+' n’a aucun contact.</p><button onclick="spyClose()">Fermer</button>';return}
+  box.innerHTML=head+'<p>Contacts de <b>'+spyEsc(t.nomRp)+'</b> — choisis <b>une seule</b> personne :</p>'+
+    SPY.list.map((o,i)=>'<button style="display:block;width:100%;margin:6px 0;text-align:left" onclick="spyPick('+i+')">👤 '+spyEsc(o.nomRp)+'</button>').join("")+
+    '<button onclick="spyClose()" style="margin-top:10px">Annuler</button>';
+}
+function spyPick(i){
+  const o=SPY.list[i],box=document.getElementById("spyBox");if(!o||!box)return;
+  const t=state.players.find(x=>x.id===SPY.tid);if(!t){spyClose();return}
+  const nm=id=>id===t.id?t.nomRp:o.nomRp;
+  const conv=(state.sms||[]).filter(m=>(m.from===t.id&&m.to===o.id)||(m.from===o.id&&m.to===t.id)).slice().reverse();
+  box.innerHTML='<h3 style="margin:0 0 6px">💬 '+spyEsc(t.nomRp)+' ⇄ '+spyEsc(o.nomRp)+'</h3>'+
+    '<p>Temps restant : <b id="spyT">30</b> s — après, la connexion se coupe.</p>'+
+    '<div style="border:1px solid #166534;border-radius:8px;padding:8px;max-height:60vh;overflow:auto">'+
+    (conv.length?conv.map(m=>'<div style="margin:6px 0"><b>'+spyEsc(nm(m.from))+'</b> : '+spyEsc(m.txt)+'</div>').join(""):'<i>Aucun message échangé.</i>')+
+    '</div><button onclick="spyClose()" style="margin-top:10px">Quitter</button>';
+  SPY.end=Date.now()+30000;if(SPY.iv)clearInterval(SPY.iv);
+  SPY.iv=setInterval(()=>{
+    const r=Math.max(0,Math.ceil((SPY.end-Date.now())/1000)),el=document.getElementById("spyT");if(el)el.textContent=r;
+    if(r<=0){spyClose();const me=selected();if(me)notif("Écoute terminée : connexion coupée. Il faudra repirater après le cooldown.",[me.id])}
+  },250);
 }
 /* Animation Matrix : piratage réussi (deux dossiers, un billet passe de l'un à l'autre) */
 function hackSuccessFx(p,t,act,vol){
-  const scr=document.querySelector("#p-hack .pcScreen");if(!scr)return;
+  const scr=document.querySelector("#p-hack .pcScreen");if(!scr){if(act==="sms")spyOpen(t.id);return}
   const old=document.getElementById("mxFx");if(old)old.remove();
   const money=act==="argent";
   const icon=money?"💵":act==="banque"?"🔒":act==="sms"?"💬":act==="carnets"?"📒":"📄";
-  const txt={argent:vol>0?("+"+vol+"$ pour toi · −"+vol+"$ pour "+t.nomRp):(t.nomRp+" n’avait plus d’argent"),infos:"Infos de "+t.nomRp+" copiées",sms:"Messages de "+t.nomRp+" copiés",banque:"Banque de "+t.nomRp+" bloquée",carnets:"Contacts de "+t.nomRp+" fouillés",journal:"Historique consulté"}[act]||"Données copiées";
+  const txt={argent:vol>0?("+"+vol+"$ pour toi · −"+vol+"$ pour "+t.nomRp):(t.nomRp+" n’avait plus d’argent"),infos:"Infos de "+t.nomRp+" copiées",sms:"Écoute des SMS de "+t.nomRp+" ouverte",banque:"Banque de "+t.nomRp+" bloquée",carnets:"Contacts de "+t.nomRp+" fouillés",journal:"Historique consulté"}[act]||"Données copiées";
   const fx=document.createElement("div");fx.id="mxFx";
   const fold=()=>'<div class="mxfFold"><i class="bk"></i><i class="tb"></i><i class="ld"></i></div>';
   fx.innerHTML='<div class="mxfRow"><div class="mxfDir l">'+fold()+'<small></small></div><div class="mxfDir r">'+fold()+'<small></small></div><div class="mxfBill"><b>'+icon+'</b></div></div><div class="mxfMsg"><b>✔ PIRATAGE RÉUSSI</b><span></span><small></small></div>';
@@ -3197,7 +3257,7 @@ function hackSuccessFx(p,t,act,vol){
     const isStaffFb=typeof fbA!=="undefined"&&fbA.staff&&staffUnlocked();
     if(money&&vol>0&&cloud&&!isStaffFb&&t.id!==p.id)fx.querySelector(".mxfMsg small").textContent="Le solde de la cible se met à jour dès qu’elle est en ligne.";
   }catch(e){}
-  const close=()=>{if(!fx.isConnected||fx.classList.contains("out"))return;fx.classList.add("out");setTimeout(()=>fx.remove(),500)};
+  const close=()=>{if(!fx.isConnected||fx.classList.contains("out"))return;fx.classList.add("out");setTimeout(()=>fx.remove(),500);if(act==="sms"){const _tid=t.id;setTimeout(()=>spyOpen(_tid),600)}};
   fx.addEventListener("click",close);
   scr.appendChild(fx);
   setTimeout(close,6500);
@@ -3235,70 +3295,116 @@ function hackGameWin(){
   window._hackVol=0;
   if(p&&t)runHack(p,t,act);
 }
-function hackGameLose(){
+const HG_GAMES={maze:["🧩 Labyrinthe",()=>hgStartMaze()],code:["🔡 Code à aligner",()=>hgStartCode()],mem:["🧠 Séquence mémoire",()=>hgStartMemory()],time:["🎯 Minuteur",()=>hgStartTiming()]};
+function hgBox(){return document.getElementById("hackGameBox")}
+function hgFresh(){const c=window._hackCtx||{};return state.players.find(x=>x.id===(c.p&&c.p.id))||c.p}
+function hgCanPick(){const p=hgFresh();return state.mode==="arbitre"||!!(p&&p.mx&&p.mx.pick)}
+function hgLaunch(k){window._hackCtx.game=k;HG_GAMES[k][1]()}
+function hgMenuOrRandom(prefix){
   clearHG();
-  document.getElementById("hackGameModal").style.display="none";
-  const p=window._hackCtx&&window._hackCtx.p;
-  if(p)notif("Piratage raté : la console se verrouille.",[p.id]);
+  if(hgCanPick()){
+    hgBox().innerHTML=(prefix||"")+'<p class="mut">🛠️ Manipulateur actif : choisis ton mini-jeu.</p>'+Object.keys(HG_GAMES).map(k=>'<button onclick="hgLaunch(\''+k+'\')">'+HG_GAMES[k][0]+'</button>').join("");
+  }else{
+    const ks=Object.keys(HG_GAMES),k=ks[Math.floor(Math.random()*ks.length)];
+    hgBox().innerHTML=(prefix||"")+'<p class="mut">🎲 Mini-jeu tiré au hasard : <b>'+HG_GAMES[k][0]+'</b></p><p class="mut">Améliore Matrix (Nova) pour choisir toi-même.</p>';
+    HG={iv:setTimeout(()=>hgLaunch(k),1500)};
+  }
 }
 function openHackGame(p,t,act){
-  window._hackCtx={p,t,act};
-  document.getElementById("hackGameBox").innerHTML=`<p class="mut">Choisis une méthode d’intrusion :</p>
-    <button onclick="hgStartMaze()">🧩 Labyrinthe</button>
-    <button onclick="hgStartCode()">🔡 Code à aligner</button>
-    <button onclick="hgStartMemory()">🧠 Séquence mémoire</button>
-    <button onclick="hgStartTiming()">🎯 Minuteur</button>`;
+  window._hackCtx={p,t,act,retried:false,game:null};
   document.getElementById("hackGameModal").style.display="block";
+  hgMenuOrRandom("");
 }
-/* --- 1) Labyrinthe --- */
-const HG_MAZES=[
- ["00001","01101","01001","01011","00000"],
- ["00100","01110","00010","11010","00000"],
- ["00000","11101","00001","01111","00000"]
-];
+function hackGameLose(){
+  clearHG();
+  const c=window._hackCtx||{},p=hgFresh();
+  if(p&&p.mx&&p.mx.retry&&!c.retried){
+    hgBox().innerHTML='<p style="color:#fca5a5;font-weight:700">❌ Intrusion ratée</p><p class="mut">🔁 Seconde chance disponible (une seule fois).</p><button onclick="hgRetry()">Réessayer</button><button onclick="hgFinalLose()" style="margin-top:6px">Abandonner</button>';
+    return;
+  }
+  hgFinalLose();
+}
+function hgRetry(){window._hackCtx.retried=true;hgMenuOrRandom('<p style="color:#facc15">🔁 Seconde chance utilisée.</p>')}
+function hgFinalLose(){
+  clearHG();
+  document.getElementById("hackGameModal").style.display="none";
+  const p=hgFresh();
+  if(p)notif("Piratage raté : la console se verrouille.",[p.id]);
+}
+/* --- 1) Labyrinthe (généré, 7x7 cases, pas + temps limités) --- */
+function hgGenMaze(n){
+  const W=2*n+1,g=Array.from({length:W},()=>Array(W).fill(1));
+  const st=[[1,1]];g[1][1]=0;
+  while(st.length){
+    const [x,y]=st[st.length-1];
+    const nb=[[2,0],[-2,0],[0,2],[0,-2]].map(d=>[x+d[0],y+d[1],d]).filter(q=>q[0]>0&&q[1]>0&&q[0]<W-1&&q[1]<W-1&&g[q[1]][q[0]]===1);
+    if(!nb.length){st.pop();continue}
+    const q=nb[Math.floor(Math.random()*nb.length)];
+    g[y+q[2][1]/2][x+q[2][0]/2]=0;g[q[1]][q[0]]=0;st.push([q[0],q[1]]);
+  }
+  return g;
+}
+function hgMazeShortest(g){
+  const W=g.length,D={"1,1":0},q=[[1,1]];
+  while(q.length){const [x,y]=q.shift();if(x===W-2&&y===W-2)return D[x+","+y];
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>{const nx=x+d[0],ny=y+d[1],k=nx+","+ny;if(g[ny]&&g[ny][nx]===0&&D[k]==null){D[k]=D[x+","+y]+1;q.push([nx,ny])}})}
+  return 40;
+}
 function hgStartMaze(){
   clearHG();
-  const m=HG_MAZES[Math.floor(Math.random()*HG_MAZES.length)].map(r=>r.split("").map(Number));
-  HG={grid:m,x:0,y:0,moves:0,max:26};
-  hgDrawMaze();
+  const g=hgGenMaze(7),W=g.length,best=hgMazeShortest(g);
+  HG={grid:g,x:1,y:1,moves:0,max:best+12,t:45};
+  let h='<p class="mut" id="hgInfo"></p><div style="display:grid;grid-template-columns:repeat('+W+',19px);gap:1px;margin:8px auto;width:max-content">';
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++)h+='<div id="mz'+x+'_'+y+'" style="width:19px;height:19px;border-radius:3px"></div>';
+  h+='</div><div class="row" style="justify-content:center;gap:6px"><button onclick="hgMove(0,-1)">↑</button></div><div class="row" style="justify-content:center;gap:6px"><button onclick="hgMove(-1,0)">←</button><button onclick="hgMove(0,1)">↓</button><button onclick="hgMove(1,0)">→</button></div>';
+  hgBox().innerHTML=h;
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++)hgPaint(x,y);
+  hgMazeInfo();
+  HG.iv=setInterval(()=>{HG.t--;hgMazeInfo();if(HG.t<=0)hackGameLose()},1000);
 }
-function hgDrawMaze(){
-  const m=HG.grid,n=m.length;
-  let html='<p class="mut">Rejoins la sortie (bas-droite). '+(HG.max-HG.moves)+' pas restants.</p><div style="display:grid;grid-template-columns:repeat('+n+',28px);gap:2px;margin:8px 0">';
-  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
-    const wall=m[y][x]===1;const here=HG.x===x&&HG.y===y;const exit=x===n-1&&y===n-1;
-    html+=`<div style="width:28px;height:28px;background:${wall?"#334155":here?"#4ade80":exit?"#166534":"#0f172a"};border-radius:4px"></div>`;
-  }
-  html+='</div><div class="row" style="justify-content:center;gap:6px"><button onclick="hgMove(0,-1)">↑</button></div>'+
-    '<div class="row" style="justify-content:center;gap:6px"><button onclick="hgMove(-1,0)">←</button><button onclick="hgMove(0,1)">↓</button><button onclick="hgMove(1,0)">→</button></div>';
-  document.getElementById("hackGameBox").innerHTML=html;
+function hgPaint(x,y){
+  const el=document.getElementById("mz"+x+"_"+y);if(!el)return;
+  const W=HG.grid.length,wall=HG.grid[y][x]===1,here=HG.x===x&&HG.y===y,exit=x===W-2&&y===W-2;
+  el.style.background=wall?"#334155":here?"#4ade80":exit?"#f59e0b":(HG.seen&&HG.seen[x+","+y])?"#14532d":"#0f172a";
 }
+function hgMazeInfo(){const el=document.getElementById("hgInfo");if(el)el.textContent="Atteins la sortie orange · "+(HG.max-HG.moves)+" pas · "+HG.t+" s"}
 function hgMove(dx,dy){
-  const m=HG.grid,n=m.length,nx=HG.x+dx,ny=HG.y+dy;
-  if(nx<0||ny<0||nx>=n||ny>=n||m[ny][nx]===1)return;
+  if(!HG.grid)return;
+  const g=HG.grid,nx=HG.x+dx,ny=HG.y+dy;
+  if(!g[ny]||g[ny][nx]!==0)return;
+  const ox=HG.x,oy=HG.y;HG.seen=HG.seen||{};HG.seen[ox+","+oy]=1;
   HG.x=nx;HG.y=ny;HG.moves++;
-  if(HG.x===n-1&&HG.y===n-1){hackGameWin();return}
-  if(HG.moves>=HG.max){hackGameLose();return}
-  hgDrawMaze();
+  hgPaint(ox,oy);hgPaint(nx,ny);hgMazeInfo();
+  const W=g.length;
+  if(nx===W-2&&ny===W-2){hackGameWin();return}
+  if(HG.moves>=HG.max)hackGameLose();
 }
-/* --- 2) Code à aligner --- */
+/* --- 2) Code à aligner (le code cible est affiché) --- */
 const HG_CHARS="ABCDEF0123456789".split("");
 function hgStartCode(){
   clearHG();
-  const len=4;
+  const len=5;
   const code=Array.from({length:len},()=>HG_CHARS[Math.floor(Math.random()*HG_CHARS.length)]);
-  HG={code,pos:0,cur:0,miss:0,maxMiss:3};
-  HG.iv=setInterval(()=>{HG.cur=(HG.cur+1)%HG_CHARS.length;hgDrawCode()},130);
+  HG={code,pos:0,cur:0,miss:0,maxMiss:2};
+  let slots="";for(let i=0;i<len;i++)slots+='<span id="hgs'+i+'" style="display:inline-block;width:38px;margin:0 3px;padding:6px 0;border-radius:6px;background:#1e293b;text-align:center">?</span>';
+  hgBox().innerHTML='<p class="mut">Le <b>code cible</b> est ci-dessous. Appuie sur Valider quand la lettre qui défile est la bonne.</p>'+
+    '<p style="font-family:monospace;font-size:1.5rem;letter-spacing:8px;text-align:center;color:#facc15;margin:8px 0">CODE : '+code.join(" ")+'</p>'+
+    '<p style="font-family:monospace;font-size:1.5rem;text-align:center">'+slots+'</p>'+
+    '<p class="mut" id="hgcInfo" style="text-align:center"></p>'+
+    '<button onclick="hgStopCode()" style="width:100%;padding:14px;font-size:1.1rem">Valider ⏹</button>';
   hgDrawCode();
+  HG.iv=setInterval(()=>{HG.cur=(HG.cur+1)%HG_CHARS.length;hgDrawCode()},85);
 }
 function hgDrawCode(){
   const {code,pos,miss,maxMiss,cur}=HG;
-  const done=code.map((c,i)=>i<pos?`<span style="color:#4ade80">${c}</span>`:i===pos?`<span style="color:#facc15;background:#1e293b;padding:0 6px">${HG_CHARS[cur]}</span>`:`<span style="color:#475569">?</span>`).join(" ");
-  document.getElementById("hackGameBox").innerHTML=`<p class="mut">Valide chaque caractère au bon moment. Erreurs : ${miss}/${maxMiss}</p>
-    <p style="font-family:monospace;font-size:1.6rem;letter-spacing:6px;text-align:center">${done}</p>
-    <button onclick="hgStopCode()">Valider ⏹</button>`;
+  code.forEach((c,i)=>{const el=document.getElementById("hgs"+i);if(!el)return;
+    if(i<pos){el.textContent=c;el.style.color="#4ade80"}
+    else if(i===pos){el.textContent=HG_CHARS[cur];el.style.color="#facc15";el.style.background="#334155"}
+    else{el.textContent="?";el.style.color="#475569"}});
+  const inf=document.getElementById("hgcInfo");if(inf)inf.textContent="Erreurs : "+miss+"/"+maxMiss+" · caractère "+(pos+1)+"/"+code.length;
 }
 function hgStopCode(){
+  if(!HG.code)return;
   const {code,pos,cur}=HG;
   if(HG_CHARS[cur]===code[pos]){
     HG.pos++;
@@ -3309,62 +3415,62 @@ function hgStopCode(){
   }
   hgDrawCode();
 }
-/* --- 3) Séquence mémoire --- */
+/* --- 3) Séquence mémoire (6 touches, 7 à 8 étapes) --- */
 function hgStartMemory(){
   clearHG();
-  const len=4+Math.floor(Math.random()*2);
-  const seq=Array.from({length:len},()=>1+Math.floor(Math.random()*4));
+  const len=7+Math.floor(Math.random()*2);
+  const seq=Array.from({length:len},()=>1+Math.floor(Math.random()*6));
   HG={seq,input:[],showing:true};
-  document.getElementById("hackGameBox").innerHTML=`<p class="mut">Regarde la séquence…</p><div class="row" style="justify-content:center;gap:8px" id="hgMemGrid">`+
-    [1,2,3,4].map(n=>`<button id="hgm${n}" style="width:56px;height:56px;font-size:1.3rem">${n}</button>`).join("")+`</div>`;
+  hgBox().innerHTML='<p class="mut" id="hgmInfo">Regarde la séquence…</p><div style="display:grid;grid-template-columns:repeat(3,64px);gap:8px;justify-content:center;margin:8px 0">'+
+    [1,2,3,4,5,6].map(n=>'<button id="hgm'+n+'" onclick="hgMemPick('+n+')" style="width:64px;height:64px;font-size:1.3rem">'+n+'</button>').join("")+'</div>';
   let i=0;
   const step=()=>{
-    if(i>0)document.getElementById("hgm"+seq[i-1]).style.background="";
-    if(i>=seq.length){HG.showing=false;hgMemReady();return}
-    document.getElementById("hgm"+seq[i]).style.background="#4ade80";
+    if(i>0){const pe=document.getElementById("hgm"+seq[i-1]);if(pe)pe.style.background=""}
+    if(i>=seq.length){HG.showing=false;const inf=document.getElementById("hgmInfo");if(inf)inf.textContent="À toi : 0/"+seq.length;return}
+    const el=document.getElementById("hgm"+seq[i]);if(el)el.style.background="#4ade80";
     i++;
-    HG.iv=setTimeout(step,500);
+    HG.iv=setTimeout(()=>{const e2=document.getElementById("hgm"+seq[i-1]);if(e2)e2.style.background="";HG.iv=setTimeout(step,170)},360);
   };
-  HG.iv=setTimeout(step,600);
-}
-function hgMemReady(){
-  document.getElementById("hackGameBox").innerHTML=`<p class="mut">À toi : reproduis la séquence (${HG.input.length}/${HG.seq.length}).</p><div class="row" style="justify-content:center;gap:8px">`+
-    [1,2,3,4].map(n=>`<button onclick="hgMemPick(${n})" style="width:56px;height:56px;font-size:1.3rem">${n}</button>`).join("")+`</div>`;
+  HG.iv=setTimeout(step,700);
 }
 function hgMemPick(n){
+  if(!HG.seq||HG.showing)return;
   HG.input.push(n);
   const i=HG.input.length-1;
   if(HG.input[i]!==HG.seq[i]){hackGameLose();return}
-  if(HG.input.length===HG.seq.length){hackGameWin();return}
-  hgMemReady();
+  const inf=document.getElementById("hgmInfo");if(inf)inf.textContent="À toi : "+HG.input.length+"/"+HG.seq.length;
+  if(HG.input.length===HG.seq.length)hackGameWin();
 }
-/* --- 4) Minuteur --- */
+/* --- 4) Minuteur (zone étroite, 4 réussites sur 6 essais) --- */
 function hgStartTiming(){
   clearHG();
-  HG={pos:0,dir:1,hits:0,tries:0,need:3,maxTries:5,zone:20+Math.floor(Math.random()*40)};
+  HG={pos:0,dir:1,hits:0,tries:0,need:4,maxTries:6,zone:10+Math.floor(Math.random()*66),w:14};
+  hgBox().innerHTML='<p class="mut" id="hgtInfo"></p>'+
+    '<div style="position:relative;height:26px;background:#1e293b;border-radius:8px;overflow:hidden"><div id="hgtZone" style="position:absolute;top:0;bottom:0;background:#166534"></div><div id="hgtCur" style="position:absolute;width:4px;top:0;bottom:0;background:#facc15"></div></div>'+
+    '<button onclick="hgStopTiming()" style="margin-top:10px;width:100%;padding:14px;font-size:1.1rem">Stop ⏹</button>';
+  hgDrawTiming();
   HG.iv=setInterval(()=>{
-    HG.pos+=HG.dir*4;
+    HG.pos+=HG.dir*5;
     if(HG.pos>=100){HG.pos=100;HG.dir=-1}
     if(HG.pos<=0){HG.pos=0;HG.dir=1}
     hgDrawTiming();
-  },40);
-  hgDrawTiming();
+  },30);
 }
 function hgDrawTiming(){
-  const {pos,zone,hits,need,tries,maxTries}=HG;
-  document.getElementById("hackGameBox").innerHTML=`<p class="mut">Arrête le curseur dans la zone verte. Réussites ${hits}/${need} · essais ${tries}/${maxTries}</p>
-    <div style="position:relative;height:22px;background:#1e293b;border-radius:8px;overflow:hidden">
-      <div style="position:absolute;left:${zone}%;width:20%;top:0;bottom:0;background:#166534"></div>
-      <div style="position:absolute;left:${pos}%;width:3px;top:0;bottom:0;background:#facc15"></div>
-    </div>
-    <button onclick="hgStopTiming()" style="margin-top:8px">Stop ⏹</button>`;
+  const {pos,zone,hits,need,tries,maxTries,w}=HG;
+  const z=document.getElementById("hgtZone"),c=document.getElementById("hgtCur"),i=document.getElementById("hgtInfo");
+  if(z){z.style.left=zone+"%";z.style.width=w+"%"}
+  if(c)c.style.left=pos+"%";
+  if(i)i.textContent="Arrête le curseur dans la zone verte. Réussites "+hits+"/"+need+" · essais "+tries+"/"+maxTries;
 }
 function hgStopTiming(){
-  const {pos,zone}=HG;
+  if(HG.zone==null)return;
+  const {pos,zone,w}=HG;
   HG.tries++;
-  if(pos>=zone&&pos<=zone+20)HG.hits++;
+  if(pos>=zone&&pos<=zone+w)HG.hits++;
   if(HG.hits>=HG.need){clearInterval(HG.iv);hackGameWin();return}
   if(HG.tries>=HG.maxTries){clearInterval(HG.iv);hackGameLose();return}
+  HG.zone=10+Math.floor(Math.random()*66);
   hgDrawTiming();
 }
 
@@ -4517,7 +4623,7 @@ function wxSync(){
   const e=state.world.event,id=e?e.id:null,key=e?(id+"|"+(e.ts||e.jour)):"";
   const ph=document.querySelector(".phone");
   if(ph)ph.classList.toggle("wxShake",id==="seisme");
-  if(WX.key!==null&&key!==WX.key&&e){try{showBanner("evt","⚠️ "+e.nom+" — "+e.desc)}catch(_){}}
+  if(WX.key!==null&&key!==WX.key&&e&&Date.now()-(e.ts||0)<180000){try{showBanner("evt","⚠️ "+e.nom+" — "+e.desc)}catch(_){}}
   if(WX.key&&!e){try{showBanner("ok","✅ "+evEndMsg(WX.key.split("|")[0]))}catch(_){}}
   const was=WX.key;WX.key=key;
   if(WX_IDS.includes(id)){if(!WX.raf||was!==key)wxStart(id)}else wxStop();
@@ -4612,7 +4718,7 @@ function render(){
   const novaOn=p&&p.novaOpen;
   const ns=document.getElementById("novaStatus");if(ns)ns.textContent=novaOn?"Stock ouvert · articles devant":"Stock fermé · entre le code";
   const sn=document.getElementById("shopNova");
-  if(sn)sn.innerHTML=novaOn?catalog("nova").map(i=>{const pr=shopPrice(i,"nova");const d=activeDeal("nova");return `<div class="novaCard"><b>${i.nom}</b><div class="mut">${pr}$ ${pr!==i.prix?"<s>"+i.prix+"$</s>":""} · ${i.slots} case ${d&&d.type==="new"&&NOVA_FLASH.some(x=>x.id===i.id)?"· FLASH 1h":""}</div><div class="novaBtns"><button class="btnInfo" onclick="novaInfo('${i.id}')">Info</button><button class="btnBuy" onclick="buy('nova','${i.id}')">Acheter</button></div></div>`}).join("")+(activeDeal("nova")?`<p class="mut" style="color:#86efac">Offre encore ${Math.max(1,Math.round((activeDeal("nova").until-Date.now())/60000))} min</p>`:""):'<p class="mut" style="color:#cbd5e1;padding:8px">Entre le code pour voir le stock au premier plan.</p>';
+  if(sn)sn.innerHTML=novaOn?catalog("nova").map(i=>{const pr=shopPrice(i,"nova");const d=activeDeal("nova");return `<div class="novaCard"><b>${i.nom}</b><div class="mut">${pr}$ ${pr!==i.prix?"<s>"+i.prix+"$</s>":""} · ${i.kind==="mxup"?(((p&&p.mx)||{})[i.id.slice(3)]?"✔ installée":"amélioration Matrix"):i.slots+" case"} ${d&&d.type==="new"&&NOVA_FLASH.some(x=>x.id===i.id)?"· FLASH 1h":""}</div><div class="novaBtns"><button class="btnInfo" onclick="novaInfo('${i.id}')">Info</button><button class="btnBuy" onclick="buy('nova','${i.id}')">Acheter</button></div></div>`}).join("")+(activeDeal("nova")?`<p class="mut" style="color:#86efac">Offre encore ${Math.max(1,Math.round((activeDeal("nova").until-Date.now())/60000))} min</p>`:""):'<p class="mut" style="color:#cbd5e1;padding:8px">Entre le code pour voir le stock au premier plan.</p>';
   const sc=document.getElementById("staffCacheCodes");
   const snc=document.getElementById("staffNovaCodes");
   if(sc)sc.style.display=state.mode==="arbitre"?"block":"none";
@@ -4624,7 +4730,7 @@ function render(){
   const cs=document.getElementById("cacheStatus");
   if(cs)cs.textContent=(p&&p.cacheOpen)?"Ouvert":"Fermé";
   const hc=document.getElementById("hackCible");if(hc)hc.innerHTML=state.players.filter(x=>state.mode==="arbitre"||x.id!==p?.id).map(x=>`<option value="${x.id}">${x.nomRp}${x.id===p?.id?" (moi)":""}</option>`).join("");
-  const hl=document.getElementById("hackLog");if(hl)hl.innerHTML=((p&&p.stolen)||[]).map(s=>`<div>${s}</div>`).join("")+((p&&p.stolenSms)||[]).map(s=>`<div>SMS volé</div>`).join("");
+  const hl=document.getElementById("hackLog");if(hl)hl.innerHTML=((p&&p.stolen)||[]).map(s=>`<div>${s}</div>`).join("");
   const hk=document.getElementById("hackKit");
   if(hk&&p){const pc=hasItem(p,/^Ordinateur/i);hk.textContent=pc?`Ordi ${pc.atk||0}/4 attaques · ${pc.armed?"armé : "+pc.armed+" · injecteur "+pc.injLeft+"/2":"NON armé (fusionne dans l’atelier)"} · CD ${p.lastHackJour===state.jour?"déjà piraté aujourd’hui":"prêt"}`:"Pas d’ordinateur"}
   const al=document.getElementById("autoLab");if(al)al.textContent=state.autoDay?"ON":"OFF";
@@ -5163,14 +5269,38 @@ function blkId(id){const p=selected();p.blocked=p.blocked||[];const i=p.blocked.
 </style>
 <script>
 /* ===== Avazine News (banderole + carte) ===== */
-function pushNews(txt){state.news=state.news||[];state.news.unshift({j:state.jour||1,txt});state.news=state.news.slice(0,15);state.rev=Date.now()}
+function pushNews(txt,tag){state.news=state.news||[];state.news.unshift({j:state.jour||1,txt,tag:tag||""});state.news=state.news.slice(0,15);state.rev=Date.now()}
 const ZICON={elec:"⚡",patrouille:"🚓",rixe:"🥊",incendie:"🔥"},WICON={seisme:"🌋",greve:"✊",fete:"🎉",pluie:"⛈️",tempete:"🌪️",incendie:"🔥"};
 (function(){
-  const _se=staffEvent;staffEvent=function(){const b=JSON.stringify((state.world||{}).event);_se();const e=(state.world||{}).event;if(e&&JSON.stringify(e)!==b){pushNews(e.nom+" : "+e.desc);save()}};
-  const _zs=zoneSpawn;zoneSpawn=function(g,f){const n=(state.zoneEvents||[]).length;_zs(g,f);const e=(state.zoneEvents||[])[n];if(e&&!e.done){pushNews(ZEV[e.type].nom+" signalé dans le secteur "+(TRR(e.rid)||{}).nom)}};
+  const _se=staffEvent;staffEvent=function(){const b=JSON.stringify((state.world||{}).event);_se();const e=(state.world||{}).event;if(e&&JSON.stringify(e)!==b){pushNews(e.nom+" : "+e.desc,"ev:"+e.id);save()}};
+  const _zs=zoneSpawn;zoneSpawn=function(g,f){const n=(state.zoneEvents||[]).length;_zs(g,f);const e=(state.zoneEvents||[])[n];if(e&&!e.done){pushNews(ZEV[e.type].nom+" signalé dans le secteur "+(TRR(e.rid)||{}).nom,"z:"+e.id)}};
 })();
+const ZEV_END={elec:"⚡ INFO · Le courant est rétabli",patrouille:"🚓 INFO · Les patrouilles reprennent un rythme normal",rixe:"🥊 INFO · Le calme est revenu",incendie:"🔥 INFO · L'incendie de l'entrepôt est éteint"};
+function newsCleanup(){
+  state.news=state.news||[];
+  const live=(state.world||{}).event;
+  /* anciennes annonces de début d'événement restées affichées alors que l'événement est fini */
+  state.news=state.news.filter(n=>{
+    if(n.tag&&n.tag.indexOf("ev:")===0)return !!(live&&n.tag==="ev:"+live.id);
+    if(!n.tag&&!live&&/^(Tremblement de terre|Grève générale|Fête de quartier|Orage|Tempête|Incendie en ville) : /.test(n.txt||""))return false;
+    if(n.tag==="evEnd"&&(state.jour||1)-(n.j||0)>=2)return false;
+    return true;
+  });
+  /* annonce de fin pour les événements de zone terminés */
+  let ch=false;
+  if(!state.zoneAnn){state.zoneAnn=1;(state.zoneEvents||[]).forEach(e=>{if(e.done)e.ann=true});ch=true}
+  (state.zoneEvents||[]).forEach(e=>{
+    if(e.done&&!e.ann){
+      e.ann=true;ch=true;
+      state.news=state.news.filter(n=>n.tag!=="z:"+e.id);
+      pushNews((ZEV_END[e.type]||"ℹ️ INFO · Fin de l'événement")+" dans le secteur "+((TRR(e.rid)||{}).nom||"")+".","evEnd");
+    }
+  });
+  if(ch)setTimeout(save,0);
+}
 function renderTicker(){
   const el=document.getElementById("tkInner");if(!el)return;
+  try{newsCleanup()}catch(_){}
   const items=[];const ev=(state.world||{}).event;if(ev)items.push("🔴 EN DIRECT · "+ev.nom+" — "+ev.desc);
   (state.zoneEvents||[]).filter(e=>!e.done).forEach(e=>items.push((ZICON[e.type]||"")+" "+ZEV[e.type].nom+" · "+(TRR(e.rid)||{}).nom));
   (state.news||[]).slice(0,6).forEach(n=>items.push("J"+n.j+" · "+n.txt));
