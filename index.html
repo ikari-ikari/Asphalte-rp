@@ -185,6 +185,33 @@ button{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:8px 1
 #wxFx{display:none;position:relative;width:calc(100% - 28px);margin:6px 14px;height:auto;aspect-ratio:108/46;image-rendering:pixelated;pointer-events:none;border-radius:14px;border:2px solid #0b1220;background:#0b1220aa}#wxFx.in{animation:wxIn .6s}@keyframes wxIn{from{opacity:0}to{opacity:1}}
 .wxShake{animation:wxShake .35s infinite}@keyframes wxShake{0%,100%{transform:translate(0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-3px)}}
 
+/* --- Matrix : animation piratage réussi (dossiers + billet) --- */
+#mxFx{position:absolute;inset:0;z-index:5;background:#050a08f2;background:color-mix(in srgb,var(--bg) 94%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:mxfIn .35s both;cursor:pointer}
+#mxFx.out{animation:mxfOut .5s forwards}
+@keyframes mxfIn{from{opacity:0}to{opacity:1}}@keyframes mxfOut{to{opacity:0}}
+.mxfRow{position:relative;width:100%;height:110px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 12%;box-sizing:border-box}
+.mxfDir{display:flex;flex-direction:column;align-items:center;gap:6px;animation:mxfPop .45s cubic-bezier(.2,1.4,.4,1) both}
+.mxfDir.l{animation-delay:.2s}.mxfDir.r{animation-delay:.35s}
+@keyframes mxfPop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+.mxfDir small{font-size:.66rem;letter-spacing:.06em;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mxfFold{position:relative;width:86px;height:64px;filter:drop-shadow(0 0 8px var(--c))}
+.mxfFold .bk{position:absolute;left:0;right:0;top:10px;bottom:0;border:2px solid var(--c);border-radius:4px;background:#14321f;background:color-mix(in srgb,var(--c) 28%,var(--bg))}
+.mxfFold .tb{position:absolute;left:0;top:0;width:34px;height:12px;border:2px solid var(--c);border-bottom:0;border-radius:4px 4px 0 0;background:#14321f;background:color-mix(in srgb,var(--c) 28%,var(--bg))}
+.mxfFold .ld{position:absolute;left:0;right:0;top:20px;bottom:0;border:2px solid var(--c);border-radius:4px;background:var(--bg);transform-origin:50% 100%}
+.mxfDir.l .ld{animation:mxfOpenL .5s ease-out 1s both}
+.mxfDir.r .ld{animation:mxfOpenR 1.3s ease-in-out 2.6s both}
+@keyframes mxfOpenL{to{transform:perspective(160px) rotateX(-68deg)}}
+@keyframes mxfOpenR{0%{transform:none}30%,70%{transform:perspective(160px) rotateX(-68deg)}100%{transform:none}}
+.mxfDir.r .mxfFold{animation:mxfGlow .6s ease-out 3.1s both}
+@keyframes mxfGlow{50%{filter:drop-shadow(0 0 22px var(--c)) brightness(1.5)}}
+.mxfBill{position:absolute;top:0;left:calc(12% + 27px);width:32px;height:32px;animation:mxfMove 1.7s ease-in-out 1.5s both;pointer-events:none}
+.mxfBill b{display:block;font-size:2rem;line-height:32px;text-align:center;filter:drop-shadow(0 0 8px var(--c));animation:mxfArc 1.7s ease-in-out 1.5s both}
+@keyframes mxfMove{0%{left:calc(12% + 27px);opacity:0}10%{opacity:1}88%{opacity:1}100%{left:calc(88% - 59px);opacity:0}}
+@keyframes mxfArc{0%{transform:translateY(34px) scale(.5) rotate(-12deg)}35%{transform:translateY(-14px) scale(1.2) rotate(8deg)}70%{transform:translateY(-4px) scale(1) rotate(-6deg)}100%{transform:translateY(44px) scale(.4) rotate(0)}}
+.mxfMsg{text-align:center;padding:0 12px;animation:mxfIn .4s ease 3.5s both}
+.mxfMsg b{display:block;font-size:1.05rem;letter-spacing:.12em;text-shadow:0 0 10px var(--c)}
+.mxfMsg span{display:block;font-size:.76rem;margin-top:4px}
+.mxfMsg small{display:block;font-size:.62rem;opacity:.7;margin-top:6px}
 /* --- Matrix : écran d'ordinateur --- */
 .pcMon{--c:#94a3b8;--bg:#0b0f14;margin:10px 0;text-align:center}
 .pcBezel{background:linear-gradient(145deg,#e5e7eb,#9ca3af);padding:12px 12px 22px;border-radius:18px;box-shadow:0 10px 24px #0005,inset 0 2px 4px #fff8;position:relative}
@@ -1774,7 +1801,7 @@ function applyRemote(data){
   render();
 }
 function isOnline(p){return !!(p&&p.lastSeen&&(Date.now()-p.lastSeen<45000))}
-function heartbeat(){const m=livingMine();if(m){m.lastSeen=Date.now();save()}}
+function heartbeat(){const m=livingMine();if(m){m.lastSeen=Date.now();try{applyFx()}catch(e){}save()}}
 if(!window._hbHook){window._hbHook=1;setInterval(heartbeat,20000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)heartbeat()})}
 function save(){
   localStorage.setItem("avakinRpHub6",JSON.stringify(state));
@@ -1817,14 +1844,14 @@ function doPush(tries,seed){
   roomNet.pushing=true;
   const b=cityBase(),me=mySlotId();
   fbReady().then(()=>fetch(b+"/rest.json")).then(r=>r.json()).then(rest=>{
-    const st=fbA.staff&&staffUnlocked(),now=Date.now(),upd={},fx=[];
+    const st=fbA.staff&&staffUnlocked(),now=Date.now(),upd={},fx=[],direct=[];
     if(rest&&!seed)state=mergeState(state,Object.assign({},rest,{players:state.players}));
     (state.players||[]).forEach((p,i)=>{
       const js=JSON.stringify(p),sn=snapPl[p.id];
       if(!seed&&sn===js)return;
       if(p.id===me){p.owner=p.owner||fbA.uid;if(p.owner!==fbA.uid&&!st)return;p.rev=now;upd["pl/"+p.id]=p}
       else if(st||seed){if(sn!==js)p.rev=now;upd["pl/"+p.id]=p}
-      else if(sn&&me){diffFx(JSON.parse(sn),p,me).forEach(f=>fx.push([p.id,f]));state.players[i]=JSON.parse(sn)}
+      else if(sn&&me){diffFx(JSON.parse(sn),p,me).forEach(f=>{if(typeof f.argent==="number"&&f.argent<0){direct.push([p.id,f])}else fx.push([p.id,f])});state.players[i]=JSON.parse(sn)}
     });
     state.rev=now;roomNet.lastRev=now;
     Object.keys(state).forEach(k=>{
@@ -1846,6 +1873,14 @@ function doPush(tries,seed){
         else if(k.indexOf("rest/")===0&&k.split("/").length===2)snapRest[k.slice(5)]=JSON.stringify(upd[k]);
       });
       fx.forEach(a=>fetch(fxBase()+"/"+a[0]+".json",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(a[1])}));
+      /* Argent volé : retrait atomique côté serveur (marche même si la cible est hors ligne).
+         Si les règles Firebase refusent, on retombe sur l'ancien système (effet appliqué à sa reconnexion). */
+      direct.forEach(a=>{
+        const f=a[1];
+        fetch(b+".json",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({["pl/"+a[0]+"/argent"]:{".sv":{increment:f.argent}},["pl/"+a[0]+"/rev"]:{".sv":"timestamp"},"rev":{".sv":"timestamp"}})})
+          .then(r=>{if(!r.ok)throw new Error(r.status)})
+          .catch(()=>fetch(fxBase()+"/"+a[0]+".json",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(f)}));
+      });
       roomStatus("Ville en ligne 24h/24 · "+(state.players||[]).length+" persos · ID "+fbA.uid);
     });
   }).catch(e=>{
@@ -3125,7 +3160,7 @@ function runHack(p,t,act){
     consumeHackGear(p);
     !ST&&hackAlert(t,"guard");notif("Virus stoppé par "+block.name,[p.id,t.id]);save();return;
   }
-  if(act==="argent"){const _vk=virusKey(virusName),_cap=_vk==="pique"?50+Math.floor(Math.random()*40):_vk==="roi"?200+Math.floor(Math.random()*300):80+Math.floor(Math.random()*120);const vol=Math.min(t.argent,Math.ceil(t.argent*(_vk==="roi"?0.35:0.2)),_cap);t.argent-=vol;p.argent+=vol;notif("Vol "+vol+"$ chez "+t.nomRp,[p.id]);notif("Hack : -"+vol+"$",[t.id])}
+  if(act==="argent"){const _vk=virusKey(virusName),_cap=_vk==="pique"?50+Math.floor(Math.random()*40):_vk==="roi"?200+Math.floor(Math.random()*300):80+Math.floor(Math.random()*120);const vol=Math.min(t.argent,Math.ceil(t.argent*(_vk==="roi"?0.35:0.2)),_cap);if(t.id===p.id){window._hackVol=0;notif("Test staff sur toi-même : choisis un autre joueur pour voir le transfert.",[p.id])}else{t.argent-=vol;p.argent+=vol;window._hackVol=vol;}notif("Vol "+vol+"$ chez "+t.nomRp,[p.id]);notif("Hack : -"+vol+"$",[t.id])}
   else if(act==="infos"){p.stolen=p.stolen||[];p.stolen.push(t.nomRp+" · "+t.phone+" · "+jobOf(t).nom);notif("Infos de "+t.nomRp,[p.id])}
   else if(act==="sms"){p.stolenSms=(state.sms||[]).filter(s=>s.from===t.id||s.to===t.id).slice(0,8);notif((p.stolenSms.length)+" SMS copiés",[p.id])}
   else if(act==="banque"){t.banqueOff=Math.max(t.banqueOff||0,1);notif("Banque bloquée : "+t.nomRp,[p.id]);notif("Banque bloquée 1 jour",[t.id])}
@@ -3142,6 +3177,30 @@ function runHack(p,t,act){
   if(act!=="sms"&&act!=="journal")!ST&&hackAlert(t,"hit");
   consumeHackGear(p);
   p.heat=Math.min(100,(p.heat||0)+(ST?0:18));save();
+  try{hackSuccessFx(p,t,act,window._hackVol||0)}catch(e){console.error(e)}
+}
+/* Animation Matrix : piratage réussi (deux dossiers, un billet passe de l'un à l'autre) */
+function hackSuccessFx(p,t,act,vol){
+  const scr=document.querySelector("#p-hack .pcScreen");if(!scr)return;
+  const old=document.getElementById("mxFx");if(old)old.remove();
+  const money=act==="argent";
+  const icon=money?"💵":act==="banque"?"🔒":act==="sms"?"💬":act==="carnets"?"📒":"📄";
+  const txt={argent:vol>0?("+"+vol+"$ pour toi · −"+vol+"$ pour "+t.nomRp):(t.nomRp+" n’avait plus d’argent"),infos:"Infos de "+t.nomRp+" copiées",sms:"Messages de "+t.nomRp+" copiés",banque:"Banque de "+t.nomRp+" bloquée",carnets:"Contacts de "+t.nomRp+" fouillés",journal:"Historique consulté"}[act]||"Données copiées";
+  const fx=document.createElement("div");fx.id="mxFx";
+  const fold=()=>'<div class="mxfFold"><i class="bk"></i><i class="tb"></i><i class="ld"></i></div>';
+  fx.innerHTML='<div class="mxfRow"><div class="mxfDir l">'+fold()+'<small></small></div><div class="mxfDir r">'+fold()+'<small></small></div><div class="mxfBill"><b>'+icon+'</b></div></div><div class="mxfMsg"><b>✔ PIRATAGE RÉUSSI</b><span></span><small></small></div>';
+  fx.querySelector(".mxfDir.l small").textContent=t.nomRp||"CIBLE";
+  fx.querySelector(".mxfDir.r small").textContent="TOI";
+  fx.querySelector(".mxfMsg span").textContent=txt;
+  try{
+    const cloud=typeof cloudPath==="function"&&cloudPath();
+    const isStaffFb=typeof fbA!=="undefined"&&fbA.staff&&staffUnlocked();
+    if(money&&vol>0&&cloud&&!isStaffFb&&t.id!==p.id)fx.querySelector(".mxfMsg small").textContent="Le solde de la cible se met à jour dès qu’elle est en ligne.";
+  }catch(e){}
+  const close=()=>{if(!fx.isConnected||fx.classList.contains("out"))return;fx.classList.add("out");setTimeout(()=>fx.remove(),500)};
+  fx.addEventListener("click",close);
+  scr.appendChild(fx);
+  setTimeout(close,6500);
 }
 function hackPlayer(){
   const p=selected();if(!p||bloque(p))return;
@@ -3170,7 +3229,10 @@ function closeHackGame(){clearHG();document.getElementById("hackGameModal").styl
 function hackGameWin(){
   clearHG();
   document.getElementById("hackGameModal").style.display="none";
-  const {p,t,act}=window._hackCtx||{};
+  let {p,t,act}=window._hackCtx||{};
+  if(p)p=state.players.find(x=>x.id===p.id)||p;
+  if(t)t=state.players.find(x=>x.id===t.id)||t;
+  window._hackVol=0;
   if(p&&t)runHack(p,t,act);
 }
 function hackGameLose(){
