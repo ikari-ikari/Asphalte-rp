@@ -855,6 +855,11 @@ function renderGang(){
         <option>Blessure grave</option>
         <option>Fièvre</option>
         <option>Infection</option>
+        <option>Fracture</option>
+        <option>Hémorragie</option>
+        <option>Brûlure</option>
+        <option>Intoxication</option>
+        <option>Entorse</option>
         <option>Mal à l’œil</option>
         <option>MST</option>
         <option>Coma</option>
@@ -867,6 +872,7 @@ function renderGang(){
       <button onclick="annoncerGrossesse()">Le dire au monde</button>
       <button class="danger staffOnly" onclick="tuerPerso()">Mort (staff)</button>
       <div id="etats"></div>
+      <div id="medBox"></div>
       <h3>Armoire à médocs</h3>
       <p class="mut">En couleur = tu l’as. Soigner fait redescendre la jauge rouge.</p>
       <div id="medocs"></div>
@@ -1254,12 +1260,12 @@ const CACHE_FLASH=[{id:"desert",nom:"Desert Eagle RP",prix:540,slots:1,info:"Pis
 const NOVA_FLASH=[{id:"vghost",nom:"Virus fantôme",prix:3200,slots:1,kind:"virus",info:"Virus flash 1h : vole sans trop de chaleur. Disparaît ensuite."},{id:"cloak",nom:"Clé brouilleur",prix:2100,slots:1,kind:"gear",info:"Réduit 1 tentative de piratage contre toi. Offre 1h."}];
 const SDF=[{label:"Maladie",apply:p=>bless(p,"Fièvre","SDF")},{label:"Vol",apply:p=>{const v=Math.min(p.argent,60);p.argent-=v;log(p.nomRp+" volé "+v+"$",[p.id])}},{label:"Tabassage",apply:p=>bless(p,"Blessure légère","Rue")},{label:"Vagabondage",apply:p=>arrest(p,1,"vagabondage")},{label:"Nuit calme",apply:()=>{}}];
 const WHEELS={
-  bagarre:[{label:"Mal à l’œil A",apply:(a,b)=>bless(a,"Mal à l’œil","vs "+b.nomRp)},{label:"Coma B",apply:(a,b)=>bless(b,"Coma","vs "+a.nomRp)},{label:"Rien",apply:()=>{}}],
+  bagarre:[{label:"Mal à l’œil A",apply:(a,b)=>bless(a,"Mal à l’œil","vs "+b.nomRp)},{label:"Bras cassé A",apply:(a,b)=>bless(a,"Fracture","bagarre vs "+b.nomRp)},{label:"Jambe cassée B",apply:(a,b)=>bless(b,"Fracture","bagarre vs "+a.nomRp)},{label:"Coma B",apply:(a,b)=>bless(b,"Coma","vs "+a.nomRp)},{label:"Rien",apply:()=>{}}],
   couteau:[
     {label:"Coupure au bras",apply:(a,b)=>bless(a,"Blessure légère","couteau vs "+b.nomRp)},
     {label:"L’autre est à terre",apply:(a,b)=>bless(b,"Blessure légère","couteau")},
     {label:"Les deux saignent",apply:(a,b)=>{bless(a,"Blessure légère","couteau");bless(b,"Blessure légère","couteau")}},
-    {label:"Ça dérape : coma",apply:(a,b)=>bless(b,"Coma","couteau")},
+    {label:"Ça dérape : coma",apply:(a,b)=>bless(b,"Coma","couteau")},{label:"Artère touchée B",apply:(a,b)=>bless(b,"Hémorragie","couteau")},
     {label:"Rien — vous vous séparez",apply:()=>{}}
   ],
   pisto:[
@@ -1267,6 +1273,7 @@ const WHEELS={
     {label:"B touche le mur, rien",apply:()=>{}},
     {label:"B est touché",apply:(a,b)=>{bless(b,"Blessure légère","9mm");a.heat=Math.min(100,(a.heat||0)+25)}},
     {label:"Raté + flics au loin",apply:a=>{a.heat=Math.min(100,(a.heat||0)+15)}},
+    {label:"Hémorragie B",apply:(a,b)=>bless(b,"Hémorragie","9mm")},
     {label:"Coma B",apply:(a,b)=>bless(b,"Coma","fusillade 9mm")}
   ],
   auto:[
@@ -1288,10 +1295,11 @@ const WHEELS={
     {label:"Cœur qui s’emballe",apply:a=>bless(a,"Fièvre","farine blanche")},
     {label:"Tu perds 40$",apply:a=>{a.argent=Math.max(0,a.argent-40)}},
     {label:"Parano : chaleur police",apply:a=>{a.heat=Math.min(100,(a.heat||0)+18)}},
+    {label:"Intoxication",apply:a=>bless(a,"Intoxication","farine coupée")},
     {label:"Mauvais trip : coma",apply:a=>bless(a,"Coma","farine blanche")}
   ],
   sexe:[{label:"Rien de spécial",apply:()=>{}},{label:"MST",apply:(a,b)=>{bless(a,"MST","avec "+b.nomRp);bless(b,"MST","avec "+a.nomRp)}},{label:"Risque grossesse",apply:(a,b)=>risqueGrossesse(a,b)},{label:"Préservatif éclaté",apply:(a,b)=>condomBurstWheel(a,b)}],
-  travail:[{label:"Prime",apply:a=>a.argent+=50},{label:"Accident",apply:a=>bless(a,"Blessure légère","travail")},{label:"RAS",apply:()=>{}}],
+  travail:[{label:"Prime",apply:a=>a.argent+=50},{label:"Accident",apply:a=>bless(a,"Blessure légère","travail")},{label:"Brûlure",apply:a=>bless(a,"Brûlure","travail")},{label:"Entorse",apply:a=>bless(a,"Entorse","travail")},{label:"RAS",apply:()=>{}}],
   hasard:[
     {label:"Tu trouves 20$",apply:a=>a.argent+=20},
     {label:"Petit rhume",apply:a=>bless(a,"Fièvre","rhume")},
@@ -1790,6 +1798,7 @@ function mergeState(local,remote){
   out.players=mergePlayers(remote.players,local.players);
   out.deaths=mergeList(remote.deaths,local.deaths,d=>JSON.stringify(d));
   out.sms=mergeList(remote.sms,local.sms,s=>(s&&s.id)||JSON.stringify(s));
+  out.rdv=(function(){const m={};[].concat(remote.rdv||[],local.rdv||[]).forEach(r=>{if(!r||!r.id)return;const o=m[r.id];if(!o||(r.u||0)>=(o.u||0))m[r.id]=r});return Object.values(m)})();
   out.ads=((remote.ads||[]).length>=(local.ads||[]).length)?remote.ads:(local.ads||[]);
   out.jour=Math.max(local.jour||1,remote.jour||1);
   out.rev=Math.max(local.rev||0,remote.rev||0);
@@ -2122,6 +2131,7 @@ function defaultPart(etat,note){
   const f=etatFam(etat);
   const n=(note||"").toLowerCase();
   if(/oeil|œil|yeux/.test(n)||f==="oeil")return "oeil";
+  {const r2=a=>a[Math.floor(Math.random()*a.length)];if(f==="fracture")return r2(["brasG","brasD","jambeG","jambeD"]);if(f==="hemorragie")return "torse";if(f==="brulure")return r2(["brasG","brasD","torse"]);if(f==="intoxication")return "ventre";if(f==="entorse")return r2(["jambeG","jambeD"])}
   if(/tete|tête|crane|crâne|fievre|fièvre/.test(n)||f==="fievre"||f==="coma")return "tete";
   if(/ventre|estomac|enceinte|mst|bas/.test(n)||f==="mst"||f==="enceinte")return "ventre";
   if(/bras gauche|épaule gauche/.test(n))return "brasG";
@@ -2138,6 +2148,7 @@ function defaultPart(etat,note){
 }
 function etatDanger(etat){
   const f=etatFam(etat);
+  if(f==="hemorragie")return 40;if(f==="intoxication")return 26;if(f==="fracture")return 24;if(f==="brulure")return 20;if(f==="entorse")return 10;
   if(f==="coma")return 55;
   if(/grave/i.test(etat||""))return 45;
   if(/moyenne/i.test(etat||""))return 25;
@@ -2198,13 +2209,14 @@ function renderBodyMap(){
   if(vh)vh.textContent=v>=75?"Rouge : hospitaliser ou la personne peut mourir":"Soigner fait redescendre cette jauge";
   const pins=document.getElementById("bodyPins");
   if(pins&&p){
-    pins.innerHTML=(p.etats||[]).map(e=>{const sev=/grave|coma/i.test(e.etat)?"s3":/moyenne|infection|mst/i.test(e.etat)?"s2":"s1";return "<div class='hpChip "+sev+"'><b>"+(PARTS[e.part||defaultPart(e.etat)]||"")+"</b> "+e.etat+(e.note?(" — "+e.note):"")+"</div>"}).join("")||"<div class='hpChip s0'>✔ Aucun problème de santé</div>";
+    pins.innerHTML=(p.etats||[]).map(e=>{const sev=/grave|coma|h[ée]morragie/i.test(e.etat)?"s3":/moyenne|infection|mst|fracture|intoxication|br[ûu]lure/i.test(e.etat)?"s2":"s1";return "<div class='hpChip "+sev+"'><b>"+(PARTS[e.part||defaultPart(e.etat)]||"")+"</b> "+e.etat+(e.note?(" — "+e.note):"")+"</div>"}).join("")||"<div class='hpChip s0'>✔ Aucun problème de santé</div>";
     const ec=document.getElementById("ecg");if(ec){ec.style.setProperty("--c",col);ec.style.setProperty("--d",Math.max(.6,2.6-v/40)+"s");const bp=document.getElementById("bpm");if(bp)bp.textContent=v>=90?"--":Math.round(68+v*0.9)}
   }
 }
 function etatFam(s){
   s=(s||"").toLowerCase();
   if(/enceinte|grossesse/.test(s))return "enceinte";
+  if(/fracture/.test(s))return "fracture";if(/h[ée]morragie/.test(s))return "hemorragie";if(/br[ûu]lure/.test(s))return "brulure";if(/intoxication/.test(s))return "intoxication";if(/entorse/.test(s))return "entorse";
   if(/blessure grave|blessure critique/.test(s))return "blesse";
   if(/blessure moyenne/.test(s))return "blesse";
   if(/blessure légère|blessure legere|blessure/.test(s))return "blesse";
@@ -2281,7 +2293,7 @@ function staffCasier(){
 function staffClearCasier(){if(!needArb())return;const p=staffWho()||selected();if(!p)return;p.casier=[];actLog("Casier effacé : "+p.nomRp);save()}
 
 function bloque(p){if(!p||p.dead){alert("Indispo");return true}if(p.banned){alert("Compte banni");return true}if(p.staffBlock&&state.mode!=="arbitre"){alert("Bloqué par le staff");return true}if(estArrete(p)){alert("Arrêté");return true}return false}
-function peutTravailler(p){return !p.dead&&!estArrete(p)&&!p.etats.some(e=>["Coma","Blessure grave"].includes(e.etat))}
+function peutTravailler(p){return !p.dead&&!estArrete(p)&&!p.etats.some(e=>["Coma","Blessure grave","Fracture","Hémorragie","Intoxication"].includes(e.etat))}
 function selectPlayer(id){
   if(state.mode!=="arbitre"){
     const me=livingMine();
@@ -2352,7 +2364,8 @@ function nextDay(auto){
       ev.apply(p,p);log("Hasard : "+ev.label,[p.id]);notif("Hasard : "+ev.label,[p.id]);
     }
     if(p.maybeBaby&&!p.maybeBaby.ready&&state.jour>=p.maybeBaby.reveal){p.maybeBaby.ready=true;notif("🧪 Message auto : tu devrais faire un test de grossesse. Va dans Santé → Faire le test.",[p.id])}
-    p.etats.forEach(e=>{if(["Enceinte"].includes(e.etat)){e.semaines=(e.semaines||1)+1;return}e.jours=(e.jours||0)+1;if(e.etat==="Blessure légère"&&e.jours>=2)e.etat="Infection"})
+    p.etats.forEach(e=>{if(["Enceinte"].includes(e.etat)){e.semaines=(e.semaines||1)+1;return}e.jours=(e.jours||0)+1;if(e.etat==="Blessure légère"&&e.jours>=2)e.etat="Infection";try{medRisk(p,e)}catch(_){}});
+    try{dedupeEtats(p)}catch(_){}
   });
   save();
 }
@@ -2410,7 +2423,7 @@ function pickFresh(p,key,list){
 }
 function jobTwist(p){
   const r=Math.random();
-  if(r<0.12){bless(p,"Blessure légère","accident de job");return "Un client t’a bousculé : blessure légère."}
+  if(r<0.12){if(Math.random()<0.3){bless(p,"Entorse","accident de job");return "Faux mouvement pendant le service : entorse."}bless(p,"Blessure légère","accident de job");return "Un client t’a bousculé : blessure légère."}
   if(r<0.20){const v=Math.min(p.argent,8+Math.floor(Math.random()*25));p.argent-=v;return "On t’a volé "+v+"$ pendant le service."}
   if(r<0.28){p.heat=Math.min(100,(p.heat||0)+6);return "Un flic t’a regardé de travers. Chaleur +6."}
   if(r<0.36){p.argent+=5+Math.floor(Math.random()*12);return "Pourboire surprise."}
@@ -5421,6 +5434,206 @@ function renderStaffPlus(){
   const _r=render;render=function(){_r();try{renderTicker();checkHackAlert();applyShopBlock();renderStaffPlus();
     const p=selected(),n=document.getElementById("shopLegal");if(n){let pn=document.getElementById("priceNote");if(!pn){pn=document.createElement("p");pn.id="priceNote";pn.className="mut";n.parentNode.insertBefore(pn,n)}pn.textContent=state.phase==="Nuit"?"🌙 Tarifs de nuit (+18%) · prix variables chaque jour":"☀️ Tarifs de jour · prix variables chaque jour"}}catch(e){console.error(e)}};
 })();
+</script>
+
+<script>
+/* ===== Médecin : rendez-vous liés à Avakin Life ===== */
+function mEsc(x){return String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function medPrice(e){
+  e=String(e||"");
+  if(/coma/i.test(e))return 400;
+  if(/h[ée]morragie/i.test(e))return 300;
+  if(/mst grave|ist grave/i.test(e))return 180;
+  if(/mst|ist/i.test(e))return 110;
+  if(/grave|critique/i.test(e))return 250;
+  if(/fracture/i.test(e))return 150;
+  if(/moyenne/i.test(e))return 120;
+  if(/intoxication/i.test(e))return 130;
+  if(/br[ûu]lure/i.test(e))return 100;
+  if(/infection/i.test(e))return 90;
+  if(/enceinte|grossesse/i.test(e))return 80;
+  if(/entorse/i.test(e))return 70;
+  if(/l[ée]g[èe]re/i.test(e))return 60;
+  if(/[œo]il|yeux/i.test(e))return 60;
+  if(/fi[èe]vre/i.test(e))return 50;
+  return 70;
+}
+function medRisk(p,e){
+  const s=e.etat||"",j=e.jours||0;
+  const tell=t=>notif("⚠️ "+t+" Va voir un médecin (Santé → Prendre un rdv).",[p.id]);
+  const up=(etat,note)=>{e.etat=etat;e.note=note;e.jours=0};
+  if(j===1&&/fracture|h[ée]morragie|br[ûu]lure|intoxication/i.test(s))tell("Ton état ("+s+") empire sans soins.");
+  if(/fracture/i.test(s)&&j>=3){up("Blessure grave","fracture non soignée");tell("Ta fracture s’est aggravée.")}
+  else if(/h[ée]morragie/i.test(s)&&j>=2){up("Coma","hémorragie non soignée");tell("Tu perds connaissance : hémorragie non soignée.")}
+  else if(/br[ûu]lure/i.test(s)&&j>=2){up("Infection","brûlure infectée");tell("Ta brûlure s’infecte.")}
+  else if(/intoxication/i.test(s)&&j>=3){up("Coma","intoxication non soignée");tell("Tu tombes dans le coma : intoxication non soignée.")}
+  else if(/entorse/i.test(s)&&j>=4){up("Blessure moyenne","entorse mal soignée");tell("Ton entorse a mal tourné.")}
+  else if(/blessure moyenne/i.test(s)&&j>=3){up("Blessure grave","plaie négligée");tell("Ta blessure empire.")}
+  else if(/^infection/i.test(s)&&j>=4){up("Blessure grave","infection généralisée");tell("L’infection se généralise.")}
+}
+function medDocs(){return (state.players||[]).filter(x=>x.job==="medecin"&&!x.dead&&!x.banned)}
+function medTouch(r){r.u=Date.now();state.rdv=state.rdv||[];state.rev=Date.now()}
+function medItemTxt(it){return mEsc(it.etat)+(it.part&&PARTS[it.part]?" ("+mEsc(PARTS[it.part])+")":"")+(it.note?" — "+mEsc(it.note):"")}
+window._medSel=window._medSel||{};window._medLieu=window._medLieu||{};window._medMotif="";
+function medToggleForm(){window._medForm=!window._medForm;window._medSel={};renderMed()}
+function medToggle(id){window._medSel[id]=!window._medSel[id];renderMed()}
+function medAsk(){
+  const p=selected();if(!p||bloque(p))return;
+  state.rdv=state.rdv||[];
+  if(state.rdv.some(r=>r.pid===p.id&&["req","acc","set","ver"].includes(r.status))){alert("Tu as déjà un rendez-vous en cours.");return}
+  const items=[];
+  (p.etats||[]).forEach(e=>{if(window._medSel[e.id])items.push({id:e.id,etat:e.etat,part:e.part||"",note:e.note||"",prix:medPrice(e.etat)})});
+  if(window._medSel.bilan)items.push({id:"bilan",etat:"Consultation / bilan de santé",part:"",note:"",prix:40});
+  if(!items.length){alert("Sélectionne au moins un problème de santé.");return}
+  const prix=items.reduce((n,i)=>n+i.prix,0);
+  if(p.argent<prix){alert("Pas assez d’argent : ce rendez-vous coûte "+prix+"$.");return}
+  const docs=medDocs().filter(d=>d.id!==p.id);
+  if(!docs.length){alert("Aucun médecin en ville pour le moment.");return}
+  const r={id:uid(),pid:p.id,did:"",status:"req",items,prix,motif:(window._medMotif||"").trim().slice(0,200),lieu:"",no:[],shots:[],day:state.jour,u:Date.now()};
+  state.rdv.unshift(r);
+  window._medForm=false;window._medSel={};window._medMotif="";
+  notif("🩺 Nouvelle demande de RDV : "+p.nomRp+" ("+items.map(i=>i.etat).join(", ")+") — "+prix+"$. Ouvre Santé pour répondre.",docs.map(d=>d.id));
+  notif("🩺 Demande de rendez-vous envoyée ("+prix+"$ à régler à la fin du soin).",[p.id]);
+  save();
+}
+function medCancel(id){
+  const r=(state.rdv||[]).find(x=>x.id===id);if(!r)return;
+  if(r.status==="ver"||r.status==="paid")return;
+  r.status="cancel";medTouch(r);
+  if(r.did)notif("Le patient a annulé le rendez-vous.",[r.did]);
+  save();
+}
+function medAccept(id){
+  const me=selected(),r=(state.rdv||[]).find(x=>x.id===id);if(!me||!r||r.status!=="req"||r.pid===me.id)return;
+  r.did=me.id;r.status="acc";medTouch(r);
+  notif("👨‍⚕️ Dr "+me.nomRp+" a accepté ta demande. Il t’envoie le lieu du rendez-vous.",[r.pid]);
+  save();
+}
+function medRefuse(id){
+  const me=selected(),r=(state.rdv||[]).find(x=>x.id===id);if(!me||!r||r.status!=="req")return;
+  r.no=r.no||[];if(!r.no.includes(me.id))r.no.push(me.id);
+  const others=medDocs().filter(d=>d.id!==r.pid);
+  if(others.every(d=>r.no.includes(d.id))){r.status="refused";notif("❌ Aucun médecin n’est disponible pour ta demande de rendez-vous.",[r.pid])}
+  medTouch(r);save();
+}
+function medSendLieu(id){
+  const me=selected(),r=(state.rdv||[]).find(x=>x.id===id);if(!me||!r||r.did!==me.id||r.status!=="acc")return;
+  const v=(window._medLieu[id]!=null?window._medLieu[id]:(me.medLieu||"")).trim();
+  if(!v){alert("Écris ton nom Avakin Life, ton code ami ou le nom de ton établissement.");return}
+  r.lieu=v.slice(0,120);r.status="set";me.medLieu=r.lieu;me.rev=Date.now();medTouch(r);
+  notif("✅ Rendez-vous pris avec Dr "+me.nomRp+". Retrouve-le sur Avakin Life : "+r.lieu+". Coût : "+r.prix+"$ (payé à la fin du soin).",[r.pid]);
+  save();
+}
+function medShot(id,inp){
+  const me=selected(),r=(state.rdv||[]).find(x=>x.id===id),f=inp&&inp.files&&inp.files[0];
+  if(!me||!r||r.did!==me.id||!f)return;
+  const n=(r.shots||[]).length+1,key="rv_"+r.id+"_"+n;
+  shrinkFile(f,900,url=>{
+    imgPut(key,url).then(rev=>{
+      r.shots=r.shots||[];r.shots.push({k:key,rev});r.status="ver";medTouch(r);
+      notif("📸 Screen envoyé pour vérification ("+r.shots.length+").",[me.id]);
+      save();
+    });
+  });
+  inp.value="";
+}
+function renderMed(){
+  const box=document.getElementById("medBox");if(!box)return;
+  const p=selected();if(!p){box.innerHTML="";return}
+  const R=state.rdv||[],nm=id=>(state.players.find(x=>x.id===id)||{}).nomRp||"?";
+  let h='<h3>🩺 Rendez-vous médical</h3><p class="mut">Fracture, hémorragie, brûlure, intoxication… : sans médecin, ça s’aggrave.</p>';
+  const mine=R.find(r=>r.pid===p.id&&["req","acc","set","ver"].includes(r.status));
+  if(mine){
+    const st={req:"⏳ Demande envoyée — en attente d’un médecin",acc:"👨‍⚕️ Dr "+mEsc(nm(mine.did))+" a accepté — il t’envoie le lieu…",set:"✅ RDV pris avec Dr "+mEsc(nm(mine.did))+"<br>📍 Avakin Life : <b>"+mEsc(mine.lieu)+"</b>",ver:"📋 Soin terminé — vérification par l’administration des médecins"}[mine.status];
+    h+='<div class="item" style="display:block"><b>'+st+'</b><br><span class="mut">'+mine.items.map(medItemTxt).join(" · ")+'</span><br>💵 À payer : <b>'+mine.prix+'$</b> (déduit à la fin)'+
+       (mine.status!=="ver"?'<br><button onclick="medCancel(\''+mine.id+'\')">Annuler le rendez-vous</button>':'')+'</div>';
+  }else if(window._medForm){
+    const tot=(p.etats||[]).filter(e=>window._medSel[e.id]).reduce((n,e)=>n+medPrice(e.etat),0)+(window._medSel.bilan?40:0);
+    h+='<div class="item" style="display:block"><p><b>Qu’est-ce que tu as ?</b></p>'+
+      ((p.etats||[]).map(e=>'<label style="display:block;margin:6px 0"><input type="checkbox" '+(window._medSel[e.id]?"checked":"")+' onchange="medToggle(\''+e.id+'\')"> '+mEsc(e.etat)+(e.part&&PARTS[e.part]?" ("+mEsc(PARTS[e.part])+")":"")+' — <b>'+medPrice(e.etat)+'$</b></label>').join("")||'<p class="mut">Aucun problème enregistré.</p>')+
+      '<label style="display:block;margin:6px 0"><input type="checkbox" '+(window._medSel.bilan?"checked":"")+' onchange="medToggle(\'bilan\')"> Consultation / bilan de santé — <b>40$</b></label>'+
+      '<input placeholder="Précision pour le médecin (facultatif)" value="'+mEsc(window._medMotif)+'" oninput="window._medMotif=this.value" />'+
+      '<p style="margin:8px 0">💵 Montant à payer : <b>'+tot+'$</b> <span class="mut">(déduit une fois le soin fait)</span></p>'+
+      '<button class="ok" onclick="medAsk()">Demander un RDV</button> <button onclick="medToggleForm()">Annuler</button></div>';
+  }else{
+    h+='<button onclick="medToggleForm()">Prendre un rdv</button><p class="mut">'+medDocs().filter(d=>d.id!==p.id).length+' médecin(s) en ville.</p>';
+  }
+  if(p.job==="medecin"){
+    h+='<h3 style="margin-top:14px">👨‍⚕️ Espace médecin</h3>';
+    const inc=R.filter(r=>r.status==="req"&&r.pid!==p.id&&!(r.no||[]).includes(p.id));
+    h+='<h4>Demandes de rendez-vous ('+inc.length+')</h4>'+(inc.map(r=>'<div class="item" style="display:block"><b>'+mEsc(nm(r.pid))+'</b> · '+r.prix+'$<br><span class="mut">'+r.items.map(medItemTxt).join(" · ")+(r.motif?'<br>« '+mEsc(r.motif)+' »':'')+'</span><br><button class="ok" onclick="medAccept(\''+r.id+'\')">Accepter</button> <button class="warn" onclick="medRefuse(\''+r.id+'\')">Refuser</button></div>').join("")||'<p class="mut">Aucune demande.</p>');
+    const my=R.filter(r=>r.did===p.id&&["acc","set","ver"].includes(r.status));
+    h+='<h4>Mes patients ('+my.length+')</h4>'+(my.map(r=>{
+      let b='<div class="item" style="display:block"><b>'+mEsc(nm(r.pid))+'</b> · '+r.prix+'$<br><span class="mut">'+r.items.map(medItemTxt).join(" · ")+(r.motif?'<br>« '+mEsc(r.motif)+' »':'')+'</span>';
+      if(r.status==="acc"){
+        const v=window._medLieu[r.id]!=null?window._medLieu[r.id]:(p.medLieu||"");
+        b+='<br><input placeholder="Ton nom Avakin Life, code ami ou nom de ton établissement" value="'+mEsc(v)+'" oninput="window._medLieu[\''+r.id+'\']=this.value" /><button class="ok" onclick="medSendLieu(\''+r.id+'\')">Envoyer le RDV</button> ';
+      }else{
+        b+='<br>📍 '+mEsc(r.lieu)+'<br><label class="mut">📸 '+(r.status==="ver"?'Ajouter un autre screen':'Envoyer le screen de la scène RP')+' <input type="file" accept="image/*" onchange="medShot(\''+r.id+'\',this)" /></label>'+
+          (r.status==="ver"?'<br><span style="color:#86efac">'+(r.shots||[]).length+' screen(s) en vérification</span>':'');
+      }
+      return b+(r.status!=="ver"?' <button onclick="medCancel(\''+r.id+'\')">Annuler</button>':'')+'</div>';
+    }).join("")||'<p class="mut">Aucun patient en cours.</p>');
+  }
+  if(box.dataset.h!==h){const fo=document.activeElement;if(fo&&box.contains(fo)&&fo.tagName==="INPUT"&&fo.type==="text"&&box.dataset.h)return;box.dataset.h=h;box.innerHTML=h}
+}
+
+/* --- Staff : catégorie médecin --- */
+function medPending(docId){return (state.rdv||[]).filter(r=>r.did===docId&&r.status==="ver").reduce((n,r)=>n+(r.shots||[]).length,0)}
+function medStaffToggle(){window._stfMed=!window._stfMed;window._stfDoc=null;renderStaffMed()}
+function medStaffPick(id){window._stfDoc=window._stfDoc===id?null:id;renderStaffMed()}
+function medZoom(k,rev){
+  const u=imgGet(k,rev);if(!u)return;
+  const d=document.createElement("div");d.style.cssText="position:fixed;inset:0;z-index:90;background:#000e;display:flex;align-items:center;justify-content:center";
+  d.onclick=()=>d.remove();d.innerHTML='<img src="'+u+'" style="max-width:100%;max-height:100%">';document.body.appendChild(d);
+}
+function medPay(id){
+  if(!needArb())return;
+  const r=(state.rdv||[]).find(x=>x.id===id);if(!r||r.status!=="ver")return;
+  const pat=state.players.find(x=>x.id===r.pid),doc=state.players.find(x=>x.id===r.did);if(!pat||!doc)return;
+  const prime=Math.max(0,parseInt((document.getElementById("prime_"+id)||{}).value)||0);
+  const due=Math.max(0,Math.min(pat.argent,r.prix));
+  pat.argent-=due;doc.argent+=due+prime;
+  const ids=r.items.map(i=>i.id);
+  pat.etats=(pat.etats||[]).filter(e=>!ids.includes(e.id)||etatFam(e.etat)==="enceinte");
+  pat.rev=Date.now();doc.rev=Date.now();
+  r.status="paid";r.paid={due,prime};medTouch(r);
+  notif("🩺 Soin terminé par Dr "+doc.nomRp+" : −"+due+"$. Tu es soigné.",[pat.id]);
+  notif("💵 Paiement du patient "+pat.nomRp+" : +"+due+"$"+(prime?" · Prime — Administration des médecins : +"+prime+"$":""),[doc.id]);
+  actLog("Médecin "+doc.nomRp+" → patient "+pat.nomRp+" : "+due+"$ + prime "+prime+"$");
+  save();
+}
+function medReject(id){
+  if(!needArb())return;
+  const r=(state.rdv||[]).find(x=>x.id===id);if(!r||r.status!=="ver")return;
+  r.status="set";r.shots=[];medTouch(r);
+  notif("📸 Screen refusé par l’administration : renvoie une preuve de la scène RP.",[r.did]);
+  save();
+}
+function renderStaffMed(){
+  const sec=document.getElementById("p-staff");if(!sec||!(state.mode==="arbitre"||staffUnlocked()))return;
+  let box=document.getElementById("staffMed");if(!box){box=document.createElement("div");box.id="staffMed";box.className="card";sec.appendChild(box)}
+  if(!sec.classList.contains("on"))return;
+  const R=state.rdv||[],nm=id=>(state.players.find(x=>x.id===id)||{}).nomRp||"?";
+  const docs=medDocs(),total=docs.reduce((n,d)=>n+medPending(d.id),0);
+  const light=n=>'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 5px;border-radius:11px;font-weight:800;margin-left:8px;'+(n>0?'background:#22c55e;color:#032;box-shadow:0 0 10px #22c55e,0 0 18px #22c55e88':'background:#334155;color:#94a3b8')+'">'+n+'</span>';
+  let h='<h3>🩺 Médecins</h3><button onclick="medStaffToggle()">Catégorie médecin'+light(total)+'</button>';
+  if(window._stfMed){
+    h+=(docs.map(d=>{
+      const n=medPending(d.id);let b='<div class="item" style="display:block"><button onclick="medStaffPick(\''+d.id+'\')" style="width:100%;text-align:left">👨‍⚕️ '+mEsc(d.nomRp)+light(n)+'</button>';
+      if(window._stfDoc===d.id){
+        const ver=R.filter(r=>r.did===d.id&&r.status==="ver"),enc=R.filter(r=>r.did===d.id&&["acc","set"].includes(r.status));
+        b+=(ver.map(r=>'<div class="item" style="display:block;margin-top:8px"><b>Patient : '+mEsc(nm(r.pid))+'</b> · à payer '+r.prix+'$<br><span class="mut">'+r.items.map(medItemTxt).join(" · ")+'<br>📍 '+mEsc(r.lieu)+'</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">'+
+          (r.shots||[]).map(sh=>{const u=imgGet(sh.k,sh.rev);return u?'<img src="'+u+'" style="width:84px;height:84px;object-fit:cover;border-radius:8px" onclick="medZoom(\''+sh.k+'\','+sh.rev+')">':'<span class="mut">chargement…</span>'}).join("")+'</div>'+
+          '<input id="prime_'+r.id+'" type="number" min="0" placeholder="Prime / administration des médecins ($)" /><button class="okg" onclick="medPay(\''+r.id+'\')">✅ Travail fait</button> <button class="warn" onclick="medReject(\''+r.id+'\')">Refuser le screen</button></div>').join("")||'<p class="mut">Aucun screen à vérifier.</p>');
+        if(enc.length)b+='<p class="mut">En cours : '+enc.map(r=>mEsc(nm(r.pid))+' ('+(r.status==="acc"?"lieu à envoyer":"RDV pris")+')').join(", ")+'</p>';
+      }
+      return b+'</div>';
+    }).join("")||'<p class="mut">Aucun joueur n’a le métier médecin.</p>');
+  }
+  if(box.dataset.h!==h){const fo=document.activeElement;if(fo&&box.contains(fo)&&fo.tagName==="INPUT"&&box.dataset.h)return;box.dataset.h=h;box.innerHTML=h}
+}
+(function(){const _r=render;render=function(){_r();try{renderMed();renderStaffMed()}catch(e){console.error(e)}}})();
 </script>
 </body>
 </html>
