@@ -5972,7 +5972,7 @@ const _rz=renderZones;renderZones=function(){
 /* ---- inventaire ---- */
 const _r2=render;render=function(){_r2();try{invUi()}catch(e){console.error(e)}};
 function invUi(){const g=E("invGrid");if(!g)return;const p=mePl(),bags={food:"🍖",drink:"🥤",gun:"🎒",tech:"💻"};
- document.querySelectorAll("#p-inv button[onclick^=\"setInvTab\"]").forEach(b=>{const k=b.getAttribute("onclick").match(/'(\w+)'/)[1],n=p?(p.items||[]).filter(i=>i.bag===k).length:0;b.className=(typeof invTab!=="undefined"&&invTab===k?"invTab on":"invTab");b.innerHTML=(bags[k]||"")+" "+b.textContent.replace(/^\S+\s/,"").replace(/\s*\(\d+\)$/,"")+(n?' <em>'+n+'</em>':"")});
+ document.querySelectorAll("#p-inv button[onclick^=\"setInvTab\"]").forEach(b=>{const k=b.getAttribute("onclick").match(/'(\w+)'/)[1],n=p?(p.items||[]).filter(i=>i.bag===k).length:0;b.className=(typeof invTab!=="undefined"&&invTab===k?"invTab on":"invTab");if(!b.dataset.lab)b.dataset.lab=b.textContent.replace(/^[^\p{L}]+/u,"").replace(/[\s\d()]+$/,"");b.innerHTML=(bags[k]||"")+" "+b.dataset.lab+(n?' <em>'+n+'</em>':"")});
  if(!E("invSearch")){g.insertAdjacentHTML("beforebegin",'<input id="invSearch" placeholder="🔍 Chercher un objet…" oninput="invFilter(this.value)">')}invFilter((E("invSearch")||{}).value||"")}
 window.invFilter=q=>{q=(q||"").toLowerCase();document.querySelectorAll("#invGrid>div").forEach(d=>{d.style.display=!q||d.textContent.toLowerCase().includes(q)||d.querySelector("img.obj")&&q==="*"?"":"none"})};
 try{render()}catch(e){}
