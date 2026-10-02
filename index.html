@@ -579,6 +579,36 @@ function renderGang(){
 
 </script>
 
+
+<style id="themeCss">
+/* ===== DESIGNS D'APP ===== */
+body[class*="th-"] #home .app small{font-size:.74rem}
+/* Papier */
+body.th-paper #home{background:#f0ebdd;--txt:#1c1917}
+body.th-paper .app i{position:relative;width:70px;height:78px;border:0;border-radius:0;background:#1c1917;box-shadow:none;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);color:transparent;text-shadow:0 0 0 #1c1917;font-size:1.6rem}
+body.th-paper .app i::before{content:"";position:absolute;inset:2px;background:#f0ebdd;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);z-index:-1}
+body.th-paper .app small{color:#1c1917;font-size:.8rem}
+body.th-paper .dock{background:#f0ebdd;border-top:1px solid #1c1917}body.th-paper .dock button{color:#1c1917}
+/* Terminal */
+body.th-term #home{background:#1c1c1c;--txt:#8dff4a;font-family:"Courier New",monospace}
+body.th-term .app i{background:none;border:0;box-shadow:none;color:transparent;text-shadow:0 0 0 #8dff4a,0 0 10px #8dff4aaa;font-size:1.9rem}
+body.th-term .app small{color:#8dff4a;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;text-shadow:0 0 6px #8dff4a88}
+body.th-term .dock{background:#262626;border-top:1px solid #8dff4a}body.th-term .dock button{color:#8dff4a;text-transform:uppercase}
+/* Verre */
+body.th-glass #home{background:linear-gradient(160deg,#1c2437,#5b6b86);--txt:#e8edf7}
+body.th-glass .app i{background:#ffffff24;border:1px solid #ffffff47;box-shadow:0 8px 20px #0005,inset 0 1px 0 #ffffff55;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+body.th-glass .app small{color:#e8edf7}
+body.th-glass .dock{background:#ffffff1f;border-top:1px solid #ffffff40;backdrop-filter:blur(10px)}body.th-glass .dock button{color:#e8edf7}
+#home.on.custom{min-height:100vh}
+/* Paramètres */
+.thCard{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:14px;margin:6px 0;background:#fff8}
+.thCard.cur{border-color:#7c3aed;box-shadow:0 0 0 2px #7c3aed33}
+.swRow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.swRow button{width:38px;height:38px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #94a3b8;padding:0;margin:0}
+#thPrev{border-radius:16px;padding:14px;margin:8px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;font-size:.7rem}
+/* Carte : bouton de sortie plein écran à portée de pouce */
+#mapExit{display:none;position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:999px;padding:14px 26px;font-size:1rem;font-weight:700;box-shadow:0 6px 20px #0008;margin:0}
+#mapViewport.mapFs #mapExit{display:block}
+</style>
 </head>
 <body>
 <div class="phone">
@@ -624,6 +654,7 @@ function renderGang(){
       <span id="coffreSlot"></span><span id="stashSlot"></span>
       <button class="app" onclick="go('p-map')"><i>🗺️</i><small>Carte</small></button>
       <button class="app" onclick="go('p-moi')"><i>💬</i><small>Moi</small></button>
+      <button class="app" onclick="go('p-set')"><i>⚙️</i><small>Paramètres</small></button>
       <button class="app hide" id="appStaff" onclick="goStaff()"><i>🛡️</i><small>Staff</small></button>
 
     </div>
@@ -777,11 +808,22 @@ function renderGang(){
       </div>
     </div>
     <div class="novaGoods" id="shopNova"></div>
+    <div class="card" id="novaThemes" style="display:none"></div>
     <div id="staffNovaCodes" class="card" style="display:none">
       <p class="mut">Staff · codes Nova Glitch</p>
       <input id="newNovaCode" placeholder="Nouveau code Nova" />
       <button class="ok" onclick="staffAddCode('nova')">Créer / activer</button>
       <div id="listNovaCodes"></div>
+    </div>
+  </section>
+  <section class="page" id="p-set"><button class="chip" onclick="setCancel();go('home')">← Accueil</button>
+    <div class="card"><h3>⚙️ Paramètres</h3>
+      <p class="mut">Design de l'application</p><div id="thList"></div>
+      <p class="mut" style="margin-top:12px">Couleur du fond du menu (aperçu en direct)</p>
+      <div class="swRow" id="thSw"></div>
+      <input type="color" id="thColor" style="width:100%;height:42px;border:0;background:none" oninput="setPreview(this.value)">
+      <div id="thPrev"></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap"><button class="ok" onclick="setAccept()">✔ Accepter</button><button onclick="setCancel()">Annuler</button><button onclick="setDefaultBg()">Couleur d'origine</button></div>
     </div>
   </section>
   <section class="page" id="p-fuse"><button class="chip" onclick="go('home')">← Accueil</button>
@@ -1983,7 +2025,8 @@ function pullCloud(){
       {const mine=Object.values(pl).filter(x=>x&&x.owner===fbA.uid);
        if(mine.length&&!mine.some(x=>x.id===mySlotId())){
          const byRev=(x,y)=>(y.rev||0)-(x.rev||0);
-         const pick=mine.filter(x=>!x.dead).sort(byRev)[0]||mine.sort(byRev)[0];
+         const byOld=(x,y)=>((x.created||0)-(y.created||0))||byRev(x,y);
+         const pick=mine.filter(x=>!x.dead).sort(byOld)[0]||mine.sort(byRev)[0];
          localStorage.setItem("asphalteMe",pick.id);state.selected=pick.id;
        }}
       Object.keys(pl).forEach(k=>{snapPl[k]=JSON.stringify(pl[k])});
@@ -2353,11 +2396,12 @@ function mySlotId(){return localStorage.getItem("asphalteMe")||""}
 function mySlot(){const id=mySlotId();return (state.players||[]).find(x=>x.id===id)||null}
 function livingMine(){const me=mySlot();return me&&!me.dead?me:null}
 function addPlayer(){
+  if(cloudPath()&&!roomNet.pulled){alert("Synchronisation avec ton compte en cours : attends quelques secondes, ton perso existant va se charger.");return}
   if(livingMine()){alert("Tu as déjà un perso vivant. Un seul compte tant qu’il n’est pas mort RP.");return}
   const nomRp=document.getElementById("nomRp").value.trim();if(!nomRp)return;
   if((state.players||[]).some(x=>!x.dead&&(x.nomRp||"").toLowerCase()===nomRp.toLowerCase())){alert("Ce nom RP est déjà pris");return}
   const id=uid();
-  state.players.push({id,nomRp,nomAvakin:document.getElementById("nomAvakin").value.trim(),photo:document.getElementById("photo").value.trim(),ig:document.getElementById("ig").value.trim(),genre:document.getElementById("genre").value,job:document.getElementById("jobNew").value,bonusSalaire:0,argent:100,heat:0,arrestedDays:0,cacheOpen:false,visitsToday:0,house:null,phone:String(100000+Math.floor(Math.random()*900000)),repas:0,boissons:0,energie:3,jobsToday:0,dead:false,contacts:{},items:[],etats:[],casier:[],nextRent:0,gotStart:true});
+  state.players.push({id,nomRp,nomAvakin:document.getElementById("nomAvakin").value.trim(),photo:document.getElementById("photo").value.trim(),ig:document.getElementById("ig").value.trim(),genre:document.getElementById("genre").value,job:document.getElementById("jobNew").value,bonusSalaire:0,argent:100,heat:0,arrestedDays:0,cacheOpen:false,visitsToday:0,house:null,phone:String(100000+Math.floor(Math.random()*900000)),repas:0,boissons:0,energie:3,jobsToday:0,dead:false,contacts:{},items:[],etats:[],casier:[],nextRent:0,gotStart:true,created:Date.now()});
   localStorage.setItem("asphalteMe",id);
   state.selected=id;
   save();
@@ -5956,6 +6000,47 @@ renderZones=function(){
 };
 try{render()}catch(e){}
 })();
+
+/* ===== DESIGNS + PARAMÈTRES ===== */
+const THEMES=[{id:"paper",nom:"Papier hexagonal",d:"Hexagones noirs sur papier crème"},{id:"term",nom:"Terminal vert",d:"Style console néon vert"},{id:"glass",nom:"Verre sombre",d:"Tuiles en verre givré"}];
+const THEME_PRICE=500,BG_PRESETS=["#f0ebdd","#1c1c1c","#1c2437","#0f3d2e","#4a1d3d","#7c2d12","#1e3a8a","#e0e7ff"];
+let _thBg=null;
+function thMe(){try{return state.mode!=="arbitre"?selected():null}catch(e){return null}}
+function thLum(h){const n=parseInt((h||"#fff").slice(1),16);return(0.299*(n>>16)+0.587*((n>>8)&255)+0.114*(n&255))/255}
+function thApplyBg(c){const h=document.getElementById("home");if(!h)return;
+  if(c&&!document.body.classList.contains("staffMode")){h.style.background=c;h.style.setProperty("--txt",thLum(c)>.55?"#1c1917":"#f1f5f9");h.classList.add("custom")}
+  else{h.style.background="";h.style.removeProperty("--txt");h.classList.remove("custom")}}
+function applyTheme(){const p=thMe(),b=document.body;
+  ["paper","term","glass"].forEach(t=>b.classList.remove("th-"+t));
+  if(p&&p.theme&&(p.themes||[]).includes(p.theme))b.classList.add("th-"+p.theme);
+  if(_thBg===null)thApplyBg(p&&p.menuBg)}
+function buyTheme(id){const p=thMe();if(!p||p.dead)return;p.themes=p.themes||[];if(p.themes.includes(id))return;
+  if((p.argent||0)<THEME_PRICE){alert("Pas assez d'argent ("+THEME_PRICE+"$)");return}
+  if(!confirm("Acheter ce design pour "+THEME_PRICE+"$ ?"))return;
+  p.argent-=THEME_PRICE;p.themes.push(id);p.theme=id;p.rev=Date.now();
+  notif("Design acheté chez Nova : "+THEMES.find(t=>t.id===id).nom+" (−"+THEME_PRICE+"$)",[p.id]);save()}
+function pickTheme(id){const p=thMe();if(!p)return;if(id&&!(p.themes||[]).includes(id))return;p.theme=id||"";p.rev=Date.now();save()}
+function renderThemes(){const p=thMe();
+  const nv=document.getElementById("novaThemes");
+  if(nv){if(p&&p.novaOpen){nv.style.display="";nv.innerHTML='<h3>🎨 Designs d\'app</h3><p class="mut">'+THEME_PRICE+'$ chacun · à activer dans ⚙️ Paramètres</p>'+THEMES.map(t=>'<div class="thCard"><div><b>'+t.nom+'</b><div class="mut">'+t.d+'</div></div>'+((p.themes||[]).includes(t.id)?'<span class="mut">✔ Possédé</span>':'<button class="btnBuy" onclick="buyTheme(\''+t.id+'\')">'+THEME_PRICE+'$</button>')+'</div>').join("")}else nv.style.display="none"}
+  const tl=document.getElementById("thList");
+  if(tl&&p){const own=p.themes||[];tl.innerHTML='<div class="thCard'+(!p.theme?' cur':'')+'"><div><b>Original</b></div><button onclick="pickTheme(\'\')">'+(!p.theme?"Actif":"Remettre")+'</button></div>'
+    +THEMES.map(t=>own.includes(t.id)?'<div class="thCard'+(p.theme===t.id?' cur':'')+'"><div><b>'+t.nom+'</b></div><button onclick="pickTheme(\''+t.id+'\')">'+(p.theme===t.id?"Actif":"Appliquer")+'</button></div>':'<div class="thCard" style="opacity:.55"><div><b>'+t.nom+'</b><div class="mut">🔒 En vente chez Nova Glitch · '+THEME_PRICE+'$</div></div></div>').join("")}
+  applyTheme()}
+function setPrevDraw(c){const pv=document.getElementById("thPrev");if(!pv)return;
+  pv.style.background=c;pv.style.color=thLum(c)>.55?"#1c1917":"#f1f5f9";
+  pv.innerHTML=["🛒 Épicerie","🎒 Inventaire","👾 Nova","⚙️ Réglages"].map(x=>'<div>'+x+'</div>').join("")}
+function setPreview(c){_thBg=c;thApplyBg(c);setPrevDraw(c);const pg=document.getElementById("p-set");if(pg)pg.style.background=c;
+  const i=document.getElementById("thColor");if(i&&i.value!==c)i.value=c}
+function setAccept(){const p=thMe();if(!p||_thBg===null)return;p.menuBg=_thBg;p.rev=Date.now();_thBg=null;document.getElementById("p-set").style.background="";save();alert("Couleur enregistrée ✔")}
+function setCancel(){if(_thBg===null)return;_thBg=null;const pg=document.getElementById("p-set");if(pg)pg.style.background="";applyTheme();const p=thMe();if(p)setPrevDraw(p.menuBg||"#f0ebdd")}
+function setDefaultBg(){const p=thMe();if(!p)return;_thBg=null;p.menuBg="";p.rev=Date.now();const pg=document.getElementById("p-set");if(pg)pg.style.background="";save();setPrevDraw("#f0ebdd")}
+function initSet(){const p=thMe(),c=(p&&p.menuBg)||"#f0ebdd";_thBg=null;
+  const sw=document.getElementById("thSw");if(sw)sw.innerHTML=BG_PRESETS.map(x=>'<button style="background:'+x+'" onclick="setPreview(\''+x+'\')"></button>').join("");
+  const i=document.getElementById("thColor");if(i)i.value=c;setPrevDraw(c)}
+(function(){const _r=render;render=function(){_r();try{renderThemes()}catch(e){}};
+  const _g=go;go=function(id){_g(id);if(id==="p-set")initSet();if(id==="p-map"){const v=document.getElementById("mapViewport");if(v&&!document.getElementById("mapExit"))v.insertAdjacentHTML("beforeend",'<button id="mapExit" type="button" onpointerdown="event.stopPropagation()" onclick="mapFs()">✕ Quitter le plein écran</button>')}};
+  try{renderThemes()}catch(e){}})();
 </script>
 </body>
 </html>
