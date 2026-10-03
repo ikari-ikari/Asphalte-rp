@@ -1048,23 +1048,24 @@ body.th-glass .dock{background:#ffffff1f;border-top:1px solid #ffffff40;backdrop
     <div class="card" id="fiche"></div>
     <div class="card" id="createCard">
       <h3>Créer ton personnage</h3>
-      <p class="mut">Tout se remplit ici, une seule fois.</p>
+      <p class="mut">Remplis tout ici, une seule fois : ça ira dans ta carte d'identité.</p>
       <div class="row"><input id="nomRp" placeholder="Nom RP" /><input id="nomAvakin" placeholder="Surnom" /></div>
-      <input id="photo" placeholder="URL photo (optionnel)" /><input id="ig" placeholder="Pseudo réseau social" />
+      <label class="mut">Photo de ta carte d'identité</label><input id="newIdPhoto" type="file" accept="image/*" />
+      <input id="ig" placeholder="Pseudo Insta (facultatif)" />
       <select id="genre"><option value="femme">Femme</option><option value="homme">Homme</option></select>
-      <select id="jobNew"></select>
+      <input id="jobDecl" placeholder="Métier RP (facultatif) — confirmé ensuite par le staff" />
+      <select id="jobNew" style="display:none"></select>
       <button class="ok" onclick="addPlayer()">Créer mon profil</button>
     </div>
     <div class="card" id="idCard"></div>
     <div class="card" id="idUpd">
-      <h3>Ma carte d'identité</h3>
-      <label class="mut">Photo de ta carte d'identité</label><input id="idPhoto" type="file" accept="image/*" onchange="pickIdPhoto(this)" />
+      <details><summary class="mut">Modifier ma carte</summary>
+      <label class="mut">Nouvelle photo</label><input id="idPhoto" type="file" accept="image/*" onchange="pickIdPhoto(this)" />
       <input id="idAvakin" placeholder="Surnom" />
-      <input id="idIg" placeholder="Pseudo réseau social" />
-      <input id="idJobAvakin" placeholder="Ton métier (ex: Serveur au Loft)" />
-      <p class="mut">Tu déclares ton métier. La direction le confirme après vérification sur ton lieu de travail.</p>
-      <button class="ok" onclick="saveId()">Mettre à jour la carte</button>
-      <button onclick="verifyAvakinJob()">Direction : valider le métier</button>
+      <input id="idIg" placeholder="Pseudo Insta" />
+      <input id="idJobAvakin" placeholder="Métier RP (à confirmer par le staff)" />
+      <button class="ok" onclick="saveId()">Mettre à jour la carte</button></details>
+      <button id="btnVerifyJob" onclick="verifyAvakinJob()">Direction : valider le métier</button>
     </div>
     <div class="card">
       <h3>Pointeuse</h3>
@@ -1852,6 +1853,7 @@ function roomStatus(t){const el=document.getElementById("roomStatus");if(el)el.t
 function cloudUrl(){
   let raw=(document.getElementById("fbUrl")&&document.getElementById("fbUrl").value)||localStorage.getItem("avakinRpHub6fb")||"";
   raw=raw.trim();
+  if(!raw)raw="asphalte-city";
   if(/asphalte-city/i.test(raw)) raw="https://asphalte-city-default-rtdb.europe-west1.firebasedatabase.app";
   const m=raw.match(/https:\/\/[a-z0-9-]+-default-rtdb[a-z0-9.-]*firebasedatabase\.app/i);
   if(m) raw=m[0];
@@ -2092,7 +2094,7 @@ function startCloud(){
 function connectWorld(){
   const saved=localStorage.getItem("avakinRpHub6fb");
   if(saved&&document.getElementById("fbUrl"))document.getElementById("fbUrl").value=saved;
-  if(saved)startCloud();
+  startCloud();
 }
 
 function uid(){return Math.random().toString(36).slice(2,9)}
@@ -2442,10 +2444,11 @@ function addPlayer(retry){
   const nomRp=document.getElementById("nomRp").value.trim();if(!nomRp)return;
   if((state.players||[]).some(x=>!x.dead&&(x.nomRp||"").toLowerCase()===nomRp.toLowerCase())){alert("Ce nom RP est déjà pris");return}
   const id=uid();
-  state.players.push({id,nomRp,nomAvakin:document.getElementById("nomAvakin").value.trim(),photo:document.getElementById("photo").value.trim(),ig:document.getElementById("ig").value.trim(),genre:document.getElementById("genre").value,job:document.getElementById("jobNew").value,bonusSalaire:0,argent:100,heat:0,arrestedDays:0,cacheOpen:false,visitsToday:0,house:null,phone:String(100000+Math.floor(Math.random()*900000)),repas:0,boissons:0,energie:3,jobsToday:0,dead:false,contacts:{},items:[],etats:[],casier:[],nextRent:0,gotStart:true,created:Date.now()});
+  state.players.push({id,nomRp,nomAvakin:document.getElementById("nomAvakin").value.trim(),photo:"",jobAvakin:(document.getElementById("jobDecl").value||"").trim(),jobVerified:false,ig:document.getElementById("ig").value.trim(),genre:document.getElementById("genre").value,job:document.getElementById("jobNew").value,bonusSalaire:0,argent:100,heat:0,arrestedDays:0,cacheOpen:false,visitsToday:0,house:null,phone:String(100000+Math.floor(Math.random()*900000)),repas:0,boissons:0,energie:3,jobsToday:0,dead:false,contacts:{},items:[],etats:[],casier:[],nextRent:0,gotStart:true,created:Date.now()});
   localStorage.setItem("asphalteMe",id);
   state.selected=id;
   save();
+  const nf=document.getElementById("newIdPhoto");if(nf&&nf.files&&nf.files[0])pickIdPhoto(nf);
 }
 function changeJob(){if(!needArb())return;const p=selected();if(!p)return;const j=document.getElementById("jobChange").value;if(jobBlockedByCasier(p,j)){alert("Casier judiciaire : ce métier est interdit");return}p.job=j;actLog(p.nomRp+" job staff → "+j);save()}
 function nextDay(auto){
@@ -4861,7 +4864,7 @@ function render(){
   document.getElementById("staffGive").style.display=state.mode==="arbitre"?"block":"none";
   document.getElementById("etats").innerHTML=(p?.etats||[]).map(e=>`<div class="item"><div>${e.etat}<div class="mut">${PARTS[e.part||defaultPart(e.etat)]||""} · ${e.note||""}</div></div></div>`).join("")||"<div class='mut'>Rien — silhouette verte</div>";
   renderBodyMap();
-  if(window.scarRender)scarRender();if(window.moiRender)moiRender();document.getElementById("shopLegal").innerHTML=LEGAL_SHOP.map(i=>lineItem(i.nom,shopPrice(i,"legal")+"$",`<button class="ok" onclick="buy('legal','${i.id}')">OK</button>`,i.id)).join("");
+  try{if(window.scarRender)scarRender()}catch(e){}try{if(window.moiRender)moiRender()}catch(e){}document.getElementById("shopLegal").innerHTML=LEGAL_SHOP.map(i=>lineItem(i.nom,shopPrice(i,"legal")+"$",`<button class="ok" onclick="buy('legal','${i.id}')">OK</button>`,i.id)).join("");
   const open=p&&p.cacheOpen&&!estArrete(p);
   const cstat=document.getElementById("cacheStatus");
   if(cstat)cstat.textContent=open?"Stock ouvert · articles devant":"Stock fermé · entre le code";
@@ -6147,7 +6150,7 @@ function scarP(){const p=selected();if(!p)return null;p.scar=p.scar||{rel:20,vis
 const SCAR_RE={p:["Hihi… tu sais parler aux dames, toi.","Mmh, j'aime bien ta façon de dire ça."],n:["D'accord, d'accord.","Comme tu voudras, chéri."],x:["Pff… quel manque de manières.","Aïe, ça pique."]};
 let scKey="",scLine="",scMode=0,scTm=0;
 const $s=i=>document.getElementById(i);
-function scarNext(){const s=scarP(),un=s.visits>=SCAR_UNLOCK;return un&&!s.m1&&s.good>=3?"m1offer":un&&s.m1&&!s.m2&&s.spent>=1000?"m2offer":"chat"+(1+Math.floor(Math.random()*3))}
+function scarNext(){const s=scarP();if(!s)return"chat1";const un=s.visits>=SCAR_UNLOCK;return un&&!s.m1&&s.good>=3?"m1offer":un&&s.m1&&!s.m2&&s.spent>=1000?"m2offer":"chat"+(1+Math.floor(Math.random()*3))}
 function scarIdle(){scMode=0;scKey=scarNext();scLine=SCAR[scKey].t;scarPaint()}
 function scarPaint(){const b=$s("scBub"),r=$s("scReply"),g=$s("scRel"),s=scarP();if(!b||!s)return;
 b.textContent="« "+scLine+" »";b.classList.toggle("tap",scMode===0);
@@ -6155,7 +6158,7 @@ const n=SCAR[scKey];r.innerHTML=scMode===1&&n?n.c.map((c,i)=>`<button onclick="s
 const un=s.visits>=SCAR_UNLOCK;if(!un){g.style.display="none";return}
 const lv=s.rel>=75?"Complices":s.rel>=50?"Amis":s.rel>=25?"Cordiale":"Distante";
 g.style.display="block";g.innerHTML=`❤ ${lv} · ${s.rel}/100<div class="scBar"><i style="width:${s.rel}%"></i></div><small>`+(!s.m1?`Mission 1 : dialogues réussis ${Math.min(3,s.good)}/3`:!s.m2?`Mission 2 : dépense ${Math.min(1000,s.spent)}/1000$ chez elle`:"−4 % sur tout le magasin ✅")+"</small>"}
-function scarRender(){if(!$s("scBub"))return;if(!scLine)scarIdle();else scarPaint()}
+function scarRender(){if(!$s("scBub")||!scarP())return;if(!scLine)scarIdle();else scarPaint()}
 function scarBubble(){if(scMode===0){scMode=1;scarPaint()}}
 function scarOv(h){let o=$s("scOv");if(!o){o=document.createElement("div");o.id="scOv";document.body.appendChild(o)}o.innerHTML='<div class="scBox">'+h+'</div>'}
 function scarClose(){const o=$s("scOv");if(o)o.remove()}
@@ -6174,7 +6177,7 @@ const draw=()=>scarOv(`<b>${cfg.t}</b><div class="scT"><i id="scTb" style="width
 window.scarTap=i=>{if(end)return;items[i]=null;if(!items.some(Boolean)){end=1;clearInterval(tm);cb(true)}else draw()};
 draw();tm=setInterval(()=>{if(end)return;left-=.25;const b=document.getElementById("scTb");if(b)b.style.width=Math.max(0,left/cfg.s*100)+"%";if(left<=0){end=1;clearInterval(tm);cb(false)}},250)}
 
-function moiRender(){const mine=livingMine(),arb=state.mode==="arbitre";const c=document.getElementById("createCard"),u=document.getElementById("idUpd");if(c)c.style.display=mine&&!arb?"none":"";if(u)u.style.display=mine||arb?"":"none"}
+function moiRender(){const mine=livingMine(),arb=state.mode==="arbitre";const c=document.getElementById("createCard"),u=document.getElementById("idUpd");if(c)c.style.display=mine&&!arb?"none":"";const vb=document.getElementById("btnVerifyJob");if(vb)vb.style.display=arb?"":"none";if(u)u.style.display=mine||arb?"":"none"}
 </script>
 </body>
 </html>
