@@ -292,6 +292,9 @@ button{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:8px 1
 @keyframes alB{from{clip-path:inset(0 0 0 0)}to{clip-path:inset(0 22% 0 22%)}}
 @media (prefers-reduced-motion:reduce){.pcHero:before,.pcHero:after,.alR s{animation:none}}
 </style>
+<script>/* garde-fous : fonctions Scarlett appelées avant leur définition */
+function silSvg(){return ""}function scDealTag(){return ""}function scDealOn(){return false}function scBadgeIcons(){return ""}
+</script>
 <script>
 const GANG_CITIES=["Edelmont","Dock 3","Villa Rose","Parc Central","Tour Nord","Club Row","Oasis","Rooftop","Chinatown","Loft District"];
 function worldPausedJobs(){return !!(state.world&&state.world.jobsPaused);}
@@ -5002,7 +5005,7 @@ function render(){
   renderJobProg();
 }
 syncFranceDay();
-render();
+try{render()}catch(e){console.warn("render init",e)}
 setTimeout(connectWorld,600);
 </script>
 <style>
@@ -6389,7 +6392,7 @@ function scBadgesOf(id){const p=(state.players||[]).find(x=>x.id===id);if(p)scar
 function scBadgeIcons(p){const b=((p&&p.badges)||[]).filter(k=>BADGES[k]);if(!b.length)return"";return'<div class="bdgRow" onclick="event.stopPropagation();scBadgesOf(\''+p.id+'\')">'+b.map(k=>'<span class="bdg">'+(k==="scarlett"?BADGE_SVG:BADGES[k].ic)+"</span>").join("")+"</div>"}
 function zarelPin(){const s=scarP();if(!s||!s.zar||R6(s)<2||R6(s)>3)return;const sv=$s("mapPinSvg");if(!sv)return;const t=TERR_DATA.find(x=>x.nom===s.zar.n&&(x.places||[]).indexOf(s.zar.p)>-1)||TERR_DATA.find(x=>x.nom===s.zar.n);if(!t)return;
 sv.insertAdjacentHTML("beforeend",`<g><circle cx="${t.x}" cy="${t.y}" r="2" fill="#ef4444" opacity=".35"><animate attributeName="r" values="1.4;4;1.4" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="${t.x}" cy="${t.y}" r="1.1" fill="#ef4444" stroke="#fff" stroke-width=".3"/><text x="${t.x}" y="${t.y-2.2}" font-size="2.6" text-anchor="middle" fill="#fff" stroke="#000" stroke-width=".25">☠ Zarel</text></g>`)}
-const _dm=drawMapPin;drawMapPin=function(){_dm.apply(this,arguments);try{zarelPin()}catch(e){}};
+const _dmZ=drawMapPin;drawMapPin=function(){_dmZ.apply(this,arguments);try{zarelPin()}catch(e){}};
 function scRainFx(){const sc=document.querySelector("#p-shop .scene");if(!sc)return;if(!sc.querySelector(".scRainL"))sc.insertAdjacentHTML("beforeend",'<div class="scRainL"></div><div class="scRainL b"></div><div class="scFlash"></div>');sc.classList.toggle("rainy",scRain())}
 function scBadgeCard(){const c=$s("idCard"),p=selected();if(!c||!p)return;let r=$s("idBadges");if(!r){r=document.createElement("div");r.id="idBadges";c.appendChild(r)}r.innerHTML=(p.badges||[]).length?'<p class="mut">Badges</p>'+scBadgeIcons(p):""}
 function scStaffFill(){const sel=$s("scT");if(!sel)return;const P=state.players||[];if(sel.options.length!==P.length){const v=sel.value;sel.innerHTML=P.map(x=>`<option value="${x.id}">${esc(x.nomRp)}</option>`).join("");if(v)sel.value=v}}
@@ -6430,6 +6433,8 @@ scFin()}
 function scFin(){scarOv('<div class="scFin"><div class="scFinBg" style="background-image:url('+SCAR_IMG.door+')"></div><div class="scFinL"></div><div class="scFinDuo"><img class="scFinS" src="'+SCAR_IMG.casual+'"><div class="scFinP">'+silSvg()+'</div><span class="scFinH">❤</span></div><p class="scFinT"><span style="animation-delay:.5s">« Viens… »</span><span style="animation-delay:3.1s">Elle te prend par le bras.</span><span style="animation-delay:5.9s">Vous avancez vers la porte de sa chambre.</span></p></div>');$s("scOv").firstChild.classList.add("scBare");setTimeout(scEnd,9300)}
 function scEnd(){const s=scarP(),p=selected();scarOv('<div style="font-size:1.4rem;letter-spacing:.3em">…</div>');$s("scOv").firstChild.classList.add("scBlack");
 setTimeout(()=>{s.r6=5;p.badges=p.badges||[];if(p.badges.indexOf("scarlett")<0)p.badges.push("scarlett");s.rel=100;scarSave();scarOv('<b>MISSION SECRÈTE TERMINÉE</b><div style="margin:10px auto;width:130px">'+BADGE_SVG+'</div><p>Badge obtenu : <b>Cœur grenade</b><br><small>Retrouve-le dans ton inventaire 🏅</small></p><button onclick="scarClose();scarIdle()">OK</button>');$s("scOv").firstChild.classList.add("scBlack")},2600)}
+
+try{render()}catch(e){console.warn("render fin",e)}
 </script>
 </body>
 </html>
