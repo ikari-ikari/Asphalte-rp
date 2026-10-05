@@ -645,6 +645,7 @@ body.th-glass .dock{background:#ffffff1f;border-top:1px solid #ffffff40;backdrop
 #mapExit{display:none;position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:999px;padding:14px 26px;font-size:1rem;font-weight:700;box-shadow:0 6px 20px #0008;margin:0}
 #mapViewport.mapFs #mapExit{display:block}
 </style>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f172a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
 <div class="phone">
@@ -4591,7 +4592,7 @@ function missionsHtml(p){
     if(p&&!arb){
       if(m.done[p.id])h+=`<div class="ok chip" style="margin-top:6px">✅ Mission réussie</div>`;
       else if(m.failed[p.id])h+=`<div class="danger chip" style="margin-top:6px">Mission ratée</div>`;
-      else h+=`<label class="mut" style="margin-top:6px">Envoie ta photo preuve</label><input type="file" accept="image/*" onchange="sendProofFile('${m.id}',this)" />`+(m.preuves[p.id]?`<div class="mut">📤 Preuve envoyée — en attente du staff</div>`:"");
+      else h+=`<label class="proofBtn">${m.preuves[p.id]?"🔁 Remplacer ma preuve":"📸 Envoyer ma preuve"}<input type="file" accept="image/*" hidden onchange="sendProofFile('${m.id}',this)"></label>`+(m.preuves[p.id]?`<div class="proofSt">📤 Envoyée ${agoTxt(m.proofAt&&m.proofAt[p.id])} · en attente du staff</div>`:"")+((m.rejected&&m.rejected[p.id])?`<div class="danger chip" style="margin-top:6px">↩️ Preuve refusée : ${escH(m.rejected[p.id])}. Renvoie une autre photo.</div>`:"");
     }
     if(arb)h+=(state.players||[]).filter(pl=>!pl.dead&&(!m.cible||m.cible==="all"||m.cible===pl.id)).map(pl=>{
       const pv=m.preuves[pl.id];
@@ -6034,6 +6035,13 @@ body.opt-cmp .card{padding:10px;margin:5px 0}body.opt-cmp .item{padding:5px;marg
 .polWB img,.polWNo{width:78px;height:92px;object-fit:cover;border:2px solid #3b2a12;background:#d8c79c;filter:sepia(.5) contrast(1.05);display:grid;place-items:center;font-size:2rem}
 .polWB b{display:block;font-size:1.05rem}.polWB small{display:block;opacity:.8}.polWS{color:#b91c1c;letter-spacing:2px;margin-top:4px}
 .polWR{font-weight:700;letter-spacing:.08em}.polWR b{font-size:1.25rem;color:#7f1d1d}
+.proofBtn{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;padding:13px;border-radius:16px;background:linear-gradient(180deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;color:#1d4ed8;font-weight:700;cursor:pointer}.proofBtn:active{transform:scale(.97)}
+.proofSt{margin-top:6px;padding:7px 10px;border-radius:12px;background:#f1f5f9;font-size:.78rem;color:#475569}
+.qN{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#ef4444;color:#fff;font-size:.75rem;margin-left:6px;vertical-align:middle}
+.qWho{display:flex;flex-direction:column;margin-bottom:8px}.qWho small{color:#64748b}
+.qImg{width:100%;max-height:340px;object-fit:contain;border-radius:14px;background:#0f172a;display:block}.qNo{height:140px;display:grid;place-items:center;color:#94a3b8}
+.qBtns{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:6px;margin-top:8px}.qBtns button{margin:0;min-height:46px;font-weight:700}
+.qWhy{display:grid;grid-template-columns:1fr 1fr;gap:6px}.qWhy button{margin:0;min-height:44px}.qNext{width:100%;margin-top:8px}
 #scOv{position:fixed;inset:0;z-index:99999;background:#0f172a99;backdrop-filter:blur(4px);display:grid;place-items:center;padding:16px}
 .scBox{width:100%;max-width:380px;background:#fff;border-radius:24px;padding:18px;box-shadow:0 20px 50px #0006;animation:popIn .25s both}
 .scBox p{margin:8px 0 12px;font-size:.95rem}.scBox>button{display:block;width:100%;margin:6px 0;padding:12px;border-radius:14px;border:1px solid #dbe3ef;background:#eef2f8;font-weight:600;color:#334155}
@@ -6572,6 +6580,48 @@ const W=(state.players||[]).filter(x=>!x.dead&&!x.banned&&(x.heat||0)>=60).sort(
 h2+=`<div class="card polBoard polX"><h3>📌 Tableau des recherchés</h3>${W.length?W.map(x=>`<div class="polRow"><span>${"★".repeat(Math.ceil(x.heat/20))}</span><b>${escH(x.nomRp)}${x.id===p.id?" (toi)":""}</b><small>${x.heat*10} $</small></div>`).join(""):'<p class="mut">Aucun fugitif en ville. Tout est calme.</p>'}</div>`;
 b.insertAdjacentHTML("beforeend",h2)}
 const _polR2=polRender;polRender=function(){_polR2.apply(this,arguments);try{polExtra()}catch(e){}};
+
+/* ===== v8 : preuves rapides + file staff + alertes/PWA ===== */
+function agoTxt(t){if(!t)return"à l'instant";const m=Math.round((Date.now()-t)/60000);return m<1?"à l'instant":m<60?"il y a "+m+" min":"il y a "+Math.round(m/60)+" h"}
+const _spf7=sendProofFile;sendProofFile=function(mid,inp){const p=selected(),m=(state.missions||[]).find(x=>x.id===mid);if(p&&m){if(m.rejected)delete m.rejected[p.id];m.proofAt=m.proofAt||{};m.proofAt[p.id]=Date.now();miniToast("📤 Envoi de ta preuve…")}return _spf7(mid,inp)};
+function qItems(){const o=[];(state.missions||[]).forEach(m=>{const pv=m.preuves||{};Object.keys(pv).forEach(id=>{if(!pv[id]||(m.done&&m.done[id])||(m.failed&&m.failed[id]))return;const pl=(state.players||[]).find(x=>x.id===id);if(pl&&!pl.dead)o.push({m,pl,t:(m.proofAt&&m.proofAt[id])||0})})});return o.sort((a,b)=>a.t-b.t)}
+let qi=0,qRej=false;
+function qRender(){const st=document.getElementById("p-staff");if(!st)return;let c=document.getElementById("valQ");if(!c){st.firstElementChild&&st.firstElementChild.insertAdjacentHTML("afterend",'<div class="card" id="valQ"></div>');c=document.getElementById("valQ");if(!c)return}
+const L=qItems();if(qi>=L.length)qi=0;if(!L.length){c.innerHTML='<h3>✅ File de validation</h3><p class="mut">Aucune preuve en attente.</p>';return}
+const it=L[qi],m=it.m,pl=it.pl,pv=m.preuves[pl.id],img=typeof pv==="string"?pv:imgGet("pr_"+m.id+"_"+pl.id,pv);
+c.innerHTML=`<h3>✅ File de validation <span class="qN">${L.length}</span></h3><div class="qWho"><b>${escH(pl.nomRp)}</b><small>${escH(m.titre)} · ${agoTxt(it.t)}</small></div>`+
+(img?`<img class="qImg" src="${img}" alt="" onclick="qZoom()">`:'<div class="qImg qNo">Chargement de la photo…</div>')+
+(qRej?`<p class="mut">Pourquoi renvoyer ?</p><div class="qWhy">${["Photo floue","Mauvais lieu","Pas la bonne tenue","Preuve incomplète"].map(w=>`<button onclick="qRev('${m.id}','${pl.id}','${w}')">${w}</button>`).join("")}<button onclick="qRej=false;qRender()">Annuler</button></div>`:
+`<div class="qBtns"><button class="ok" onclick="qOk('${m.id}','${pl.id}')">✅ Valider${m.argent?" · +"+m.argent+" $":""}</button><button onclick="qRej=true;qRender()">↩️ Renvoyer</button><button class="danger" onclick="qKo('${m.id}','${pl.id}')">❌ Ratée</button></div>`)+
+(L.length>1?`<button class="qNext" onclick="qi=(qi+1)%${L.length};qRej=false;qRender()">Suivant ▶ (${qi+1}/${L.length})</button>`:"")}
+function qZoom(){const L=qItems(),it=L[qi];if(!it)return;const pv=it.m.preuves[it.pl.id],img=typeof pv==="string"?pv:imgGet("pr_"+it.m.id+"_"+it.pl.id,pv);scarOv('<img src="'+img+'" style="width:100%;border-radius:12px"><button onclick="scarClose()">Fermer</button>')}
+function qOk(mid,pid){if(!needArb())return;qRej=false;openReward(mid,pid);confirmReward();try{closeReward()}catch(e){}miniToast("✅ Mission validée")}
+function qKo(mid,pid){if(!needArb())return;failMission(mid,pid);miniToast("❌ Mission ratée")}
+function qRev(mid,pid,why){if(!needArb())return;const m=state.missions.find(x=>x.id===mid);if(!m)return;m.rejected=m.rejected||{};m.rejected[pid]=why;delete m.preuves[pid];if(m.proofAt)delete m.proofAt[pid];qRej=false;notif("Preuve refusée ("+why+") : "+m.titre,[pid]);save();miniToast("↩️ Renvoyée au joueur")}
+/* --- Alertes + installation --- */
+const NT={id:null,seen:null,sms:0,hack:"",n:0};
+const ntOK=()=>"Notification" in window&&"serviceWorker" in navigator;
+function ntShow(title,body,tag){if(document.hidden&&ntOK()&&Notification.permission==="granted"){navigator.serviceWorker.getRegistration().then(r=>{if(r)r.showNotification(title,{body,tag,icon:"icon-192.png",badge:"icon-192.png",vibrate:[120,60,120],renotify:true})});NT.n++;try{navigator.setAppBadge&&navigator.setAppBadge(NT.n)}catch(e){}}else{miniToast("🔔 "+(body||title));try{scTone(988,0,.25,.12)}catch(e){}}}
+async function ntAsk(){if(!ntOK())return miniToast("Alertes non supportées ici");const r=await Notification.requestPermission();optRender();miniToast(r==="granted"?"🔔 Alertes activées":"Alertes non autorisées")}
+function ntTest(){const d=document.hidden;ntShow("Asphalte City RP","Alerte de test : tout fonctionne.","test");if(!d)miniToast("Test : verrouille l'écran ou change d'app pour voir la vraie alerte")}
+async function ntInstall(){const e=window._ip;if(!e)return;e.prompt();try{await e.userChoice}catch(_){}window._ip=null;optRender()}
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();window._ip=e;optRender()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){NT.n=0;try{navigator.clearAppBadge&&navigator.clearAppBadge()}catch(e){}}});
+function ntRows(){const pm=ntOK()?Notification.permission:"unsupported",std=window.matchMedia&&matchMedia("(display-mode: standalone)").matches;
+return`<div class="optRow" style="display:block"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>🔔 Alertes (SMS, piratages, missions)</span><button class="tg ${pm==="granted"?"on":""}" ${pm==="denied"||pm==="unsupported"?"disabled":""} onclick="ntAsk()">${pm==="granted"?"Activées":pm==="denied"?"Bloquées":pm==="unsupported"?"Indispo":"Activer"}</button></div>`+
+(pm==="granted"?'<button style="margin-top:8px" onclick="ntTest()">Tester une alerte</button>':"")+
+(std?'<p class="mut">✅ App installée.</p>':window._ip?'<button class="ok" style="margin-top:8px" onclick="ntInstall()">📲 Installer sur l\'écran d\'accueil</button>':'<p class="mut">Pour l\'installer : menu du navigateur → « Ajouter à l\'écran d\'accueil » (iPhone : Partager → Sur l\'écran d\'accueil).</p>')+
+'<p class="mut">Les alertes arrivent tant que l\'app reste ouverte en arrière-plan.</p></div>'}
+const _optR7=optRender;optRender=function(){_optR7();const b=document.getElementById("optBox");if(b)b.insertAdjacentHTML("afterbegin",ntRows())};
+function ntWatch(){const p=(typeof mySlot==="function"?mySlot():null)||selected(),arb=state.mode==="arbitre",id=p&&p.id;if(NT.id!==id){NT.id=id;NT.seen=null}
+const ns=(state.notifs||[]).filter(n=>!n.vis||(id&&n.vis.indexOf(id)>-1)||(arb&&n.vis.indexOf("staff")>-1)),sms=id?(state.sms||[]).filter(x=>x.to===id):[],hk=p&&p.hackAlert?JSON.stringify(p.hackAlert).slice(0,60):"";
+if(NT.seen===null){NT.seen=ns.map(n=>n.t);NT.sms=sms.length;NT.hack=hk;return}
+const fr=ns.filter(n=>NT.seen.indexOf(n.t)<0&&!/Message RP$/.test(n.t));NT.seen=ns.map(n=>n.t);
+fr.slice(0,3).forEach(n=>ntShow("Asphalte City RP",n.t.replace(/^J\d+ — /,""),"n"+n.t.slice(-24)));
+if(sms.length>NT.sms)sms.slice(0,Math.min(2,sms.length-NT.sms)).forEach(x=>ntShow("📩 "+((state.players||[]).find(y=>y.id===x.from)||{}).nomRp||"Message",x.txt,"sms"+x.from));
+NT.sms=sms.length;if(hk&&hk!==NT.hack)ntShow("🚨 Piratage détecté","Quelqu'un s'attaque à ton téléphone.","hack");NT.hack=hk}
+const _rn7=render;render=function(){const r=_rn7.apply(this,arguments);try{qRender();ntWatch()}catch(e){}return r};
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 
 try{render()}catch(e){console.warn("render fin",e)}
 </script>
