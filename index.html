@@ -1008,16 +1008,8 @@ body.th-glass .dock{background:#ffffff1f;border-top:1px solid #ffffff40;backdrop
     </div>
   </section>
   <section class="page" id="p-flic"><button class="chip" onclick="go('home')">← Accueil</button>
-    <div class="card">
-      <h3>Commissariat</h3>
-      <p class="mut">Amendes et arrangements… discrets.</p>
-      <div class="heat"><i id="heatBar"></i></div>
-      <p class="mut" id="heatTxt"></p>
-      <p id="amendeBox"></p>
-      <button onclick="payerAmende()">Payer l’amende</button>
-      <button id="bribeBtn" onclick="potDeVin()">Pot-de-vin</button>
-      <p class="mut" id="bribeHint">Plus tu es chaud, plus ça coûte.</p>
-    </div>
+    <div id="polBox"></div>
+    <div style="display:none"><i id="heatBar"></i><span id="heatTxt"></span><span id="amendeBox"></span><button id="bribeBtn"></button><span id="bribeHint"></span></div>
   </section>
     <section class="page" id="p-bank"><button class="chip" onclick="go('home')">← Accueil</button>
     <div class="scene">
@@ -5862,7 +5854,7 @@ function drawMrv(force){const box=$("mrvBox"),p=me();if(!box||!p)return;const m=
   return '<div class="item"><span><b>'+esc(o.t)+'</b> · '+o.a+'$<br><small>'+esc(o.d)+'</small></span>'+(o.rep>done?'<small>Réputation '+o.rep+' requise</small>':busy?'<small>En cours</small>':'<button class="ok" onclick="mrvTake('+i+')">Réserver</button>')+'</div>'}).join(""):'<p class="mut">Présente-toi d\'abord à MRv.</p>')+'</div>';
  if(!force&&box.dataset.h===h)return;const fo=document.activeElement;if(!force&&fo&&box.contains(fo)&&/INPUT|SELECT/.test(fo.tagName))return;box.dataset.h=h;box.innerHTML=h}
 function staffBox(){const b=$("mrvStaffBox");if(!b)return;const st=isSt();b.style.display=st?"block":"none";if(!st)return;
- const k=owned().map(x=>x.id+x.nomRp).join("|");if(b.dataset.k!==k){const v=$("mrvT").value;b.dataset.k=k;$("mrvT").innerHTML=owned().map(x=>'<option value="'+x.id+'">'+esc(x.nomRp)+'</option>').join("");if(v)$("mrvT").value=v}
+ const k=owned().map(x=>x.id+x.nomRp).join("|");if(b.dataset.k!==k){const v=$("mrvT").value;b.dataset.k=k;$("mrvT").innerHTML=owned().map(x=>'<option value="'+x.id+'">'+escH(x.nomRp)+'</option>').join("");if(v)$("mrvT").value=v}
  if(document.activeElement!==$("mrvRich"))$("mrvRich").value=W().rich;$("mrvCtlB").textContent=W().ctl?"Rendre le contrôle":"Prendre le contrôle"}
 function mrvRender(){const p=me(),st=isSt();
  if(!$("mrvSlot")){const gr=document.querySelector("#home .apps");if(gr)gr.insertAdjacentHTML("beforeend",'<span id="mrvSlot"></span>')}
@@ -6018,6 +6010,30 @@ input,select,textarea{min-height:44px;transition:border-color .15s,box-shadow .1
 #toTop{position:fixed;right:14px;bottom:96px;width:44px;height:44px;border-radius:50%;display:none;z-index:40;box-shadow:0 8px 20px #0003;padding:0;font-size:1.2rem}
 body.opt-calm *{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
 body.opt-cmp .card{padding:10px;margin:5px 0}body.opt-cmp .item{padding:5px;margin-top:4px}
+.polHero{position:relative;overflow:hidden;border-radius:24px;padding:16px 16px 12px;color:#fff;background:linear-gradient(160deg,#0b1220,#16213e 70%,#1b2a4e);box-shadow:0 14px 34px #0b122055,inset 0 0 0 1px #ffffff12}
+.polHero:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 110%,var(--pc,#22c55e)33,transparent 60%);pointer-events:none}
+.polSiren{position:absolute;left:0;right:0;top:0;height:6px;display:flex}.polSiren i{flex:1;opacity:.25}.polSiren i:first-child{background:#ef4444}.polSiren i:last-child{background:#3b82f6}
+.polSiren.on i{animation:polBlink var(--sp,1.6s) infinite}.polSiren.on i:last-child{animation-delay:calc(var(--sp,1.6s)/2)}
+@keyframes polBlink{0%,100%{opacity:.2}50%{opacity:1;box-shadow:0 0 18px currentColor}}
+.polTop h3{margin:6px 0 2px;font-size:1.15rem;color:#fff}.polTop p{margin:0;font-size:.78rem;color:#b7c3dc}
+.polG{display:block;width:78%;max-width:300px;margin:6px auto 0}
+.polStars{display:flex;justify-content:center;gap:6px;font-size:1.3rem;color:#334155;margin-top:2px}.polStars .on{color:#fbbf24;text-shadow:0 0 10px #fbbf24aa}
+.polChips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}.polChips span{background:#fff;border:1px solid #e5e9f0;border-radius:999px;padding:6px 11px;font-size:.74rem;font-weight:600;color:#334155}.polChips .warn{background:#fff7ed;border-color:#fed7aa;color:#c2410c}
+.polGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.polAct{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;margin:0;padding:12px;min-height:96px;border-radius:18px;background:#fff;border:1px solid #e5e9f0;box-shadow:0 6px 16px #64748b14}
+.polAct i{font-style:normal;font-size:1.5rem}.polAct b{font-size:.88rem;color:#0f172a}.polAct small{font-size:.68rem;color:#64748b;line-height:1.25}
+.polAct:not([disabled]):active{background:#eef2f8}.polAct[disabled]{opacity:.45;filter:grayscale(.7)}
+.polRow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eef2f6;font-size:.82rem}.polRow span{background:#0f172a;color:#fff;border-radius:8px;padding:2px 7px;font-size:.7rem}.polRow b{flex:1}.polRow small{color:#94a3b8}
+.polWide{grid-column:1/-1}
+.polCell{position:relative;margin:8px 0;padding:16px;border-radius:22px;color:#e2e8f0;background:repeating-linear-gradient(90deg,#1e293b 0 14px,#0f172a 14px 20px);box-shadow:0 12px 30px #0f172a55;border:1px solid #334155}
+.polCell h3{margin:0 0 4px;color:#fff}.polCell p{margin:0 0 10px;font-size:.85rem;color:#cbd5e1}
+.polCellBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.polCellBtns button{background:#0f172ae6;color:#fff;border-color:#475569;margin:0;min-height:44px}
+.polWanted{margin:8px 0;padding:14px;border-radius:6px;background:#f3e7c9;color:#3b2a12;border:3px double #7c5a24;box-shadow:0 10px 24px #0003;text-align:center;font-family:Georgia,serif;transform:rotate(-.6deg)}
+.polWT{font-weight:900;letter-spacing:.22em;font-size:1.05rem;color:#7f1d1d;border-bottom:2px solid #7c5a24;padding-bottom:6px}
+.polWB{display:flex;gap:12px;align-items:center;justify-content:center;margin:10px 0;text-align:left}
+.polWB img,.polWNo{width:78px;height:92px;object-fit:cover;border:2px solid #3b2a12;background:#d8c79c;filter:sepia(.5) contrast(1.05);display:grid;place-items:center;font-size:2rem}
+.polWB b{display:block;font-size:1.05rem}.polWB small{display:block;opacity:.8}.polWS{color:#b91c1c;letter-spacing:2px;margin-top:4px}
+.polWR{font-weight:700;letter-spacing:.08em}.polWR b{font-size:1.25rem;color:#7f1d1d}
 #scOv{position:fixed;inset:0;z-index:99999;background:#0f172a99;backdrop-filter:blur(4px);display:grid;place-items:center;padding:16px}
 .scBox{width:100%;max-width:380px;background:#fff;border-radius:24px;padding:18px;box-shadow:0 20px 50px #0006;animation:popIn .25s both}
 .scBox p{margin:8px 0 12px;font-size:.95rem}.scBox>button{display:block;width:100%;margin:6px 0;padding:12px;border-radius:14px;border:1px solid #dbe3ef;background:#eef2f8;font-weight:600;color:#334155}
@@ -6406,14 +6422,14 @@ const w=[];pool.forEach(k=>{w.push(k);if(SCAR[k].l===L||SCAR[k].r||SCAR[k].ph)w.
 function bdgIcon(k,sz,off){const b=BADGES[k],f=off?"filter:grayscale(1) opacity(.35);":"";if(k==="scarlett")return`<div style="width:${sz}px;height:${sz}px;${f}">${BADGE_SVG}</div>`;return`<div style="width:${sz}px;height:${sz}px;${f}border-radius:50%;background:#14101a;border:3px solid #c9a227;display:grid;place-items:center;font-size:${sz*.5}px">${b.ic}</div>`}
 function scBadgeHtml(p,all){const have=p.badges||[],ks=Object.keys(BADGES).filter(k=>all||have.indexOf(k)>-1);if(!ks.length)return"<p>Aucun badge pour l'instant.</p>";return'<div class="scBg">'+ks.map(k=>{const on=have.indexOf(k)>-1;return`<div class="scBgI">${bdgIcon(k,60,!on)}<b>${on?BADGES[k].n:"???"}</b><small>${on||k!=="scarlett"?BADGES[k].d:"Mission secrète"}</small></div>`}).join("")+"</div>"}
 function scBadges(){scarOv("<b>🏅 Mes badges</b>"+scBadgeHtml(selected()||{},true)+'<button onclick="scarClose()">Fermer</button>')}
-function scBadgesOf(id){const p=(state.players||[]).find(x=>x.id===id);if(p)scarOv("<b>🏅 Badges de "+esc(p.nomRp)+"</b>"+scBadgeHtml(p,false)+'<button onclick="scarClose()">Fermer</button>')}
+function scBadgesOf(id){const p=(state.players||[]).find(x=>x.id===id);if(p)scarOv("<b>🏅 Badges de "+escH(p.nomRp)+"</b>"+scBadgeHtml(p,false)+'<button onclick="scarClose()">Fermer</button>')}
 function scBadgeIcons(p){const b=((p&&p.badges)||[]).filter(k=>BADGES[k]);if(!b.length)return"";return'<div class="bdgRow" onclick="event.stopPropagation();scBadgesOf(\''+p.id+'\')">'+b.map(k=>'<span class="bdg">'+(k==="scarlett"?BADGE_SVG:BADGES[k].ic)+"</span>").join("")+"</div>"}
 function zarelPin(){const s=scarP();if(!s||!s.zar||R6(s)<2||R6(s)>3)return;const sv=$s("mapPinSvg");if(!sv)return;const t=TERR_DATA.find(x=>x.nom===s.zar.n&&(x.places||[]).indexOf(s.zar.p)>-1)||TERR_DATA.find(x=>x.nom===s.zar.n);if(!t)return;
 sv.insertAdjacentHTML("beforeend",`<g><circle cx="${t.x}" cy="${t.y}" r="2" fill="#ef4444" opacity=".35"><animate attributeName="r" values="1.4;4;1.4" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="${t.x}" cy="${t.y}" r="1.1" fill="#ef4444" stroke="#fff" stroke-width=".3"/><text x="${t.x}" y="${t.y-2.2}" font-size="2.6" text-anchor="middle" fill="#fff" stroke="#000" stroke-width=".25">☠ Zarel</text></g>`)}
 const _dmZ=drawMapPin;drawMapPin=function(){_dmZ.apply(this,arguments);try{zarelPin()}catch(e){}};
 function scRainFx(){const sc=document.querySelector("#p-shop .scene");if(!sc)return;if(!sc.querySelector(".scRainL"))sc.insertAdjacentHTML("beforeend",'<div class="scRainL"></div><div class="scRainL b"></div><div class="scFlash"></div>');sc.classList.toggle("rainy",scRain())}
 function scBadgeCard(){const c=$s("idCard"),p=selected();if(!c||!p)return;let r=$s("idBadges");if(!r){r=document.createElement("div");r.id="idBadges";c.appendChild(r)}r.innerHTML=(p.badges||[]).length?'<p class="mut">Badges</p>'+scBadgeIcons(p):""}
-function scStaffFill(){const sel=$s("scT");if(!sel)return;const P=state.players||[];if(sel.options.length!==P.length){const v=sel.value;sel.innerHTML=P.map(x=>`<option value="${x.id}">${esc(x.nomRp)}</option>`).join("");if(v)sel.value=v}}
+function scStaffFill(){const sel=$s("scT");if(!sel)return;const P=state.players||[];if(sel.options.length!==P.length){const v=sel.value;sel.innerHTML=P.map(x=>`<option value="${x.id}">${escH(x.nomRp)}</option>`).join("");if(v)sel.value=v}}
 function scSt(a){if(!needArb())return;const p=(state.players||[]).find(x=>x.id===$s("scT").value);if(!p)return;
 if(a==="reset"){delete p.scar;p.badges=(p.badges||[]).filter(k=>!BADGES[k])}
 else{const s=p.scar=p.scar||{rel:20,visits:0,good:0,spent:0,m1:0,m2:0,disc:0};
@@ -6488,6 +6504,74 @@ document.body.insertAdjacentHTML("beforeend",'<button id="toTop" aria-label="Hau
 document.addEventListener("scroll",e=>{const t=e.target===document?document.scrollingElement:e.target;if(!t||t.scrollTop===undefined)return;tg=t;document.getElementById("toTop").style.display=t.scrollTop>500?"block":"none"},true);
 document.getElementById("toTop").onclick=()=>{if(tg)tg.scrollTo({top:0,behavior:"smooth"})};
 document.addEventListener("click",e=>{if(optGet().vib&&navigator.vibrate&&e.target.closest&&e.target.closest("button"))navigator.vibrate(10)},true)})();
+
+/* ===== v6 : Commissariat ===== */
+const POL_LV=[["Calme","#22c55e","Le planton te salue d'un signe de tête."],["Surveillé","#eab308","Des regards appuyés dans le couloir…"],["Recherché","#f97316","Ton signalement circule au fond de la salle."],["Traqué","#ef4444","Une patrouille tourne autour du quartier."],["Fugitif","#b91c1c","Tous les agents connaissent ton visage."]];
+const polLv=h=>Math.min(4,Math.floor(h/20));
+function polOk(p,t){scarOv('<b>🚔 Commissariat</b><p>'+t+'</p><button onclick="scarClose()">OK</button>')}
+function polSave(p){p.rev=Date.now();save()}
+function polPay(){const p=selected();if(!p||bloque(p))return;const due=p.amende||0;if(!due)return;if(p.argent<due)return polOk(p,"Il te manque "+(due-p.argent)+" $ pour régler l'amende.");p.argent-=due;p.amende=0;p.heat=Math.max(0,(p.heat||0)-10);notif("Amende payée "+due+"$",[p.id]);polSave(p);polOk(p,"Amende réglée : <b>−"+due+" $</b><br>Chaleur −10.")}
+function polBribe(){const p=selected();if(!p||p.dead||p.banned)return;const c=bribeCost(p);if(c<=0)return;if(p.argent<c)return polOk(p,"Il te manque "+(c-p.argent)+" $ pour ce pot-de-vin.");
+const fail=.12+Math.min(.28,(p.heat||0)/250);
+if(Math.random()<fail){const l=Math.round(c*.35);p.argent-=l;p.heat=Math.min(100,(p.heat||0)+8);log("Pot-de-vin refusé",[p.id]);polSave(p);polOk(p,"L'agent empoche <b>"+l+" $</b>… et te garde quand même dans le viseur.<br>Chaleur +8.")}
+else{p.argent-=c;p.heat=Math.max(0,(p.heat||0)-28);notif("Pot-de-vin OK −"+c+"$ · chaleur -28",[p.id]);polSave(p);polOk(p,"Le dossier glisse sous une pile de papiers.<br><b>−"+c+" $</b> · chaleur −28.")}}
+function polLow(){const p=selected();if(!p||p.lowDay===state.jour)return;p.lowDay=state.jour;p.heat=Math.max(0,(p.heat||0)-6);polSave(p);miniToast("Tu te fais discret… chaleur −6")}
+function polLawyer(){const p=selected();if(!p)return;const arr=estArrete(p),cas=p.casier||[];if(!arr&&!cas.length)return;if(p.argent<300)return polOk(p,"Maître Delorme demande <b>300 $</b> d'honoraires.");
+p.argent-=300;if(arr){p.arrestedDays=Math.max(0,Math.ceil(p.arrestedDays/2));p.amende=Math.round((p.amende||0)*.6);polSave(p);polOk(p,"Maître Delorme plaide ton dossier.<br>Peine réduite de moitié, amende −40 %.")}
+else{cas.pop();polSave(p);polOk(p,"Maître Delorme fait sauter une ligne de ton casier. <b>−300 $</b>")}}
+function polSurrender(go2){const p=selected();if(!p)return;const h=p.heat||0,d=Math.max(1,Math.ceil(h/30));
+if(!go2)return scarOv('<b>🏳️ Se rendre</b><p>Tu te livres au comptoir. ~<b>'+d+' jour(s)</b> de cellule et une amende, mais la chaleur retombe à <b>10 %</b>.</p><button onclick="polSurrender(1)">Oui, je me rends</button><button onclick="scarClose()">Annuler</button>');
+arrest(p,d,"Reddition volontaire");p.heat=Math.min(p.heat||0,10);polSave(p);polOk(p,"Menottes. La porte de la cellule claque. <b>"+d+" jour(s)</b>.")}
+const POL_SC=[
+{t:"Tu traînes souvent par ici, toi. Un renseignement à partager ?",c:[["Donner un tuyau",()=>Math.random()<.7?{h:-12,m:"Il note l'info sans un mot. « Bon travail. »"}:{h:6,m:"« Ton tuyau sent le réchauffé… » Il fronce les sourcils."}],["Je ne sais rien.",()=>({h:2,m:"« Mmh. Je te garde à l'œil. »"})],["Glisser un billet (50 $)",()=>({h:-8,$:50,m:"Le billet disparaît dans sa poche. « Je n'ai rien vu. »"})]]},
+{t:"Un voisin s'est plaint de bruits suspects cette nuit. C'était toi ?",c:[["Nier tranquillement",()=>Math.random()<.6?{h:0,m:"« Hmm. Je note. »"}:{h:10,m:"Il ne te croit pas du tout."}],["Présenter des excuses (30 $)",()=>({h:-6,$:30,m:"« Une prochaine fois, ce sera plus cher. »"})],["Plaider la bonne foi",()=>Math.random()<.5?{h:-4,m:"« Bon… passe pour cette fois. »"}:{h:4,m:"« Pas convaincant. »"}]]},
+{t:"Je finis mon service dans une heure. Un café, ça te dit ?",c:[["Accepter (5 $)",()=>({h:-5,$:5,m:"Vous trinquez en silence. Il semble s'adoucir."}) ],["Décliner",()=>({h:0,m:"« Comme tu voudras. »"})],["Tenter de l'amadouer",()=>Math.random()<.5?{h:-10,m:"Un sourire en coin. « Tu es culotté. J'aime bien. »"}:{h:8,m:"« Tu me prends pour qui ? »"}]]},
+{need:"fine",t:"Tu as une amende en attente. On règle ça maintenant ?",c:[["Je paie tout de suite",()=>({pay:1})],["Je négocie",()=>Math.random()<.6?{am:-.25,m:"« …Disons 25 % de moins. Une seule fois. »"}:{$:10,m:"« Frais de dossier : 10 $. Merci de ta franchise. »"}],["Plus tard",()=>({h:3,m:"« Ne tarde pas. »"})]]}];
+function polTalk(){const p=selected();if(!p)return;if(p.polDay!==state.jour){p.polDay=state.jour;p.polN=0}
+if(p.polN>=2)return polOk(p,"L'agent Morel est occupé avec un dossier… Repasse demain.");
+const L=POL_SC.filter(s=>!s.need||(p.amende||0)>0);window._polS=L[Math.floor(Math.random()*L.length)];
+scarOv('<b>👮 Agent Morel</b><p>« '+window._polS.t+' »</p>'+window._polS.c.map((c,i)=>'<button onclick="polPick('+i+')">'+c[0]+'</button>').join(""))}
+function polPick(i){const p=selected(),r=window._polS.c[i][1]();if(r.pay){scarClose();return polPay()}
+if(r.$&&p.argent<r.$)return polOk(p,"Tu n'as pas assez sur toi… il hausse un sourcil.");
+if(r.$)p.argent-=r.$;if(r.h)p.heat=Math.max(0,Math.min(100,(p.heat||0)+r.h));if(r.am)p.amende=Math.max(0,Math.round((p.amende||0)*(1+r.am)));p.polN=(p.polN||0)+1;polSave(p);
+polOk(p,"« "+r.m+" »"+(r.h?"<br><small>Chaleur "+(r.h>0?"+":"")+r.h+"</small>":"")+(r.$?"<br><small>−"+r.$+" $</small>":""))}
+function polRender(){const b=document.getElementById("polBox");if(!b)return;const p=selected();
+if(!p){b.innerHTML='<div class="card"><h3>🚔 Commissariat</h3><p class="mut">Crée ton personnage pour accéder au commissariat.</p></div>';return}
+const h=Math.min(100,p.heat||0),lv=polLv(h),L=POL_LV[lv],due=p.amende||0,arr=estArrete(p),cas=p.casier||[],stars=Math.ceil(h/20),cost=bribeCost(p),fail=Math.round((.12+Math.min(.28,h/250))*100),risk=Math.round(100*shopBustChance(p,5,false)),ok=!(p.dead||p.banned),low=p.lowDay===state.jour;
+const A=(ic,t,s,fn,dis,why)=>`<button class="polAct" ${dis||!ok?"disabled":""} onclick="${fn}"><i>${ic}</i><b>${t}</b><small>${dis&&why?why:s}</small></button>`;
+b.innerHTML=`<div class="polHero" style="--pc:${L[1]};--sp:${Math.max(.5,2.2-lv*.4)}s"><div class="polSiren ${h>=20?"on":""}"><i></i><i></i></div>
+<div class="polTop"><div><h3>🚔 Commissariat Central</h3><p>${arr?"🔒 En cellule : "+p.arrestedDays+" jour(s)":L[2]}</p></div></div>
+<svg viewBox="0 0 120 72" class="polG"><defs><linearGradient id="polGr" x1="0" x2="1"><stop offset="0" stop-color="#22c55e"/><stop offset=".5" stop-color="#eab308"/><stop offset="1" stop-color="#ef4444"/></linearGradient></defs><path d="M10 62A50 50 0 0 1 110 62" fill="none" stroke="#243049" stroke-width="10" stroke-linecap="round"/><path d="M10 62A50 50 0 0 1 110 62" pathLength="100" fill="none" stroke="url(#polGr)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${h} 100" opacity="${h?1:0}" style="transition:stroke-dasharray .6s"/><text x="60" y="52" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${h}%</text><text x="60" y="68" text-anchor="middle" font-size="8" font-weight="700" fill="${L[1]}">${L[0].toUpperCase()}</text></svg>
+<div class="polStars">${[1,2,3,4,5].map(i=>`<span class="${i<=stars?"on":""}">★</span>`).join("")}</div></div>
+<div class="polChips"><span class="${due?"warn":""}">💶 Amende : ${due?due+" $":"aucune"}</span><span>📁 Casier : ${cas.length}</span><span class="${risk>=10?"warn":""}">🎯 Contrôle : ${risk}%</span></div>
+<div class="polGrid">${A("💶","Payer l'amende",due?due+" $ · chaleur −10":"Rien à payer","polPay()",!due,"Aucune amende")}${A("🕵️","Pot-de-vin",cost?cost+" $ · −28 · refus "+fail+"%":"—","polBribe()",cost<=0,"Chaleur à 0 %")}${A("🌙","Faire profil bas","Gratuit · chaleur −6 · 1×/jour","polLow()",low,"Déjà fait aujourd'hui")}${A("⚖️","Avocat",arr?"300 $ · peine ÷2":"300 $ · efface 1 fait du casier","polLawyer()",!arr&&!cas.length,"Rien à plaider")}${A("🏳️","Se rendre","Chaleur → 10 · cellule","polSurrender()",h<30||arr,arr?"Déjà en cellule":"Chaleur ≥ 30 requise")}${A("👮","Parler à l'agent","Négocier, tuyauter…","polTalk()",false)}</div>
+<div class="card polRec"><h3>📁 Casier judiciaire</h3>${cas.length?cas.slice().reverse().slice(0,8).map(c=>`<div class="polRow"><span>J${c.jour}</span><b>${escH(c.fait||"Fait")}</b><small>${c.jours?c.jours+" j":""}</small></div>`).join(""):'<p class="mut">Casier vierge. Pour l\'instant.</p>'}</div>`}
+const _rPol=render;render=function(){const r=_rPol.apply(this,arguments);try{polRender()}catch(e){}return r};
+
+function escH(t){return String(t==null?"":t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+/* ===== v7 : Commissariat — cellule, TIG, avis de recherche ===== */
+function polPay(){const p=selected();if(!p||p.dead||p.banned)return;const due=p.amende||0;if(!due)return;if(p.argent<due)return polOk(p,"Il te manque "+(due-p.argent)+" $ pour régler l'amende.");p.argent-=due;p.amende=0;p.heat=Math.max(0,(p.heat||0)-10);notif("Amende payée "+due+"$",[p.id]);polSave(p);polOk(p,"Amende réglée : <b>−"+due+" $</b><br>Chaleur −10.")}
+const polBailCost=p=>(p.amende||0)+50*(p.arrestedDays||0);
+function polBail(){const p=selected();if(!p||!estArrete(p))return;const c=polBailCost(p);if(p.argent<c)return polOk(p,"La caution est de <b>"+c+" $</b>. Il t'en manque "+(c-p.argent)+".");
+p.argent-=c;p.arrestedDays=0;p.amende=0;notif("Libéré sous caution −"+c+"$",[p.id]);polSave(p);polOk(p,"Le planton ouvre la cellule. <b>Libéré sous caution</b> : −"+c+" $.")}
+function polEscape(go2){const p=selected();if(!p||!estArrete(p))return;
+if(!go2)return scarOv('<b>🪚 Tenter l\'évasion</b><p>Mini-jeu de 9 secondes. <b>Réussite</b> : tu es libre mais ta chaleur grimpe à 85 %. <b>Échec</b> : +2 jours de cellule et +100 $ d\'amende.</p><button onclick="polEscape(1)">Je tente le coup</button><button onclick="scarClose()">Annuler</button>');
+scarGame({t:"Scie les barreaux 🪚",e:["🪚","🪚","🪚","🪚","🪚","🪚","🪚","🪚"],s:9},ok=>{
+if(ok){p.arrestedDays=0;p.heat=Math.max(p.heat||0,85);p.casier=p.casier||[];p.casier.push({jour:state.jour,fait:"Évasion",jours:0});log(p.nomRp+" s'est évadé",[p.id]);polSave(p);polOk(p,"Le dernier barreau cède. Tu files dans la nuit… <b>Chaleur 85 %</b>.")}
+else{p.arrestedDays=(p.arrestedDays||0)+2;p.amende=(p.amende||0)+100;polSave(p);polOk(p,"Un gardien arrive ! Tu es ramené en cellule : <b>+2 jours</b>, +100 $ d'amende.")}})}
+function polTIG(){const p=selected();if(!p||p.dead||p.banned||estArrete(p)||!(p.heat>0))return;if(p.tigDay===state.jour)return miniToast("Déjà fait aujourd'hui");
+scarGame({t:"Travaux d'intérêt général 🧹",e:["🗑️","🍂","🥫","📰","🧃","🍃","🛒","🧴"],s:14},ok=>{
+if(ok){p.tigDay=state.jour;p.heat=Math.max(0,(p.heat||0)-12);polSave(p);polOk(p,"Le commissaire hoche la tête. <b>Chaleur −12</b>. Reviens demain.")}else polOk(p,"Tu as bâclé le travail… rien de gagné. Retente ta chance.")})}
+function polExtra(){const b=document.getElementById("polBox"),p=selected();if(!b||!p||b.querySelector(".polX"))return;const h=Math.min(100,p.heat||0),arr=estArrete(p),done=p.tigDay===state.jour;
+const g=b.querySelector(".polGrid");if(g)g.insertAdjacentHTML("beforeend",`<button class="polAct polX polWide" ${arr||h<=0||done?"disabled":""} onclick="polTIG()"><i>🧹</i><b>Travaux d'intérêt général</b><small>${arr?"Impossible en cellule":h<=0?"Chaleur à 0 %":done?"Déjà fait aujourd'hui":"Mini-jeu · chaleur −12 · 1×/jour"}</small></button>`);
+if(arr){const c=polBailCost(p);b.insertAdjacentHTML("afterbegin",`<div class="polCell polX"><h3>🔒 En cellule</h3><p>Il te reste <b>${p.arrestedDays} jour(s)</b>. Les jours passent avec le temps du jeu.</p><div class="polCellBtns"><button onclick="polBail()">💶 Caution · ${c} $</button><button onclick="polEscape()">🪚 S'évader</button></div></div>`)}
+let h2="";
+if(h>=60&&!p.dead&&!p.banned){const ph=p.idPhoto||p.photo||"";h2+=`<div class="polWanted polX"><div class="polWT">AVIS DE RECHERCHE</div><div class="polWB">${ph?`<img src="${ph}" alt="">`:`<div class="polWNo">👤</div>`}<div><b>${escH(p.nomRp)}</b><small>« ${escH(p.nomAvakin||"alias inconnu")} »</small><div class="polWS">${"★".repeat(Math.ceil(h/20))}</div></div></div><div class="polWR">RÉCOMPENSE <b>${h*10} $</b></div></div>`}
+const W=(state.players||[]).filter(x=>!x.dead&&!x.banned&&(x.heat||0)>=60).sort((a,c)=>(c.heat||0)-(a.heat||0)).slice(0,5);
+h2+=`<div class="card polBoard polX"><h3>📌 Tableau des recherchés</h3>${W.length?W.map(x=>`<div class="polRow"><span>${"★".repeat(Math.ceil(x.heat/20))}</span><b>${escH(x.nomRp)}${x.id===p.id?" (toi)":""}</b><small>${x.heat*10} $</small></div>`).join(""):'<p class="mut">Aucun fugitif en ville. Tout est calme.</p>'}</div>`;
+b.insertAdjacentHTML("beforeend",h2)}
+const _polR2=polRender;polRender=function(){_polR2.apply(this,arguments);try{polExtra()}catch(e){}};
 
 try{render()}catch(e){console.warn("render fin",e)}
 </script>
