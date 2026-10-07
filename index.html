@@ -7150,6 +7150,23 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
   to { opacity:1; }
 }
 </style>
+<style>
+/* V19 : aucun emoji, aucune légende ni indication textuelle au-dessus des vidéos Scarlett.
+   Les anciennes animations restent désactivées visuellement : seule la vidéo choisie est visible. */
+#p-shop .scene .scLifeProp,
+#p-shop .scene .scLifeCaption,
+#p-shop .scene .scV14Prop,
+#p-shop .scene .scV14Sound,
+#p-shop .scene .scV14Ambient,
+#p-shop .scene .scV15Prop,
+#p-shop .scene .scV15Sound,
+#p-shop .scene .scV17Emoji,
+#p-shop .scene .scV17Caption,
+#p-shop .scene .scV17Prop,
+#p-shop .scene .scV17Sound {
+  display:none !important;
+}
+</style>
 <script>
 /* ===== V18 : une seule loop vidéo à la fois ===== */
 (function(){
@@ -7278,7 +7295,7 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
 
   // Aucun ancien emoji/texte d'animation ne doit rester au-dessus du visuel.
   function purgeOldOverlays(){
-    document.querySelectorAll('.scV15Prop,.scV15Sound,.scV17Emoji,.scV17Caption').forEach(e=>e.remove());
+    document.querySelectorAll('.scV15Prop,.scV15Sound,.scV17Emoji,.scV17Caption,.scLifeProp,.scLifeCaption,.scV14Prop,.scV14Sound,.scV14Ambient,.scV17Prop,.scV17Sound').forEach(e=>e.remove());
   }
   purgeOldOverlays();
   setInterval(purgeOldOverlays,1000);
@@ -7293,3 +7310,11 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
 </script>
 </body>
 </html>
+<style>
+/* V20 : l'interface Scarlett reste accessible au-dessus de la vidéo */
+#p-shop .scene .scV18Video{z-index:8;}
+#p-shop .scene .scRel{z-index:30 !important;top:8px !important;left:8px !important;right:8px !important;}
+#p-shop .scene .scRoom{position:absolute;left:8px;right:8px;bottom:8px;z-index:30 !important;margin:0 !important;}
+#p-shop .scene .scRoom button{position:relative;z-index:31;}
+#p-shop .scene .scRoom small{position:relative;z-index:31;}
+</style>
