@@ -1650,6 +1650,7 @@ function drawMapPin(){
 }
 function mapClick(e){
   const pct=clientToPct(e.clientX,e.clientY);
+  if(window.burgMapClick && window.burgMapClick(pct))return;
   setMapPin(pct);
 }
 function bindMapGestures(){
@@ -3111,7 +3112,7 @@ function buy(kind,id){
   if(item.kind==="av"&&protections(p).length>=2){alert("Max 2 protections sur le téléphone");return}
   const prix=shopPrice(item,kind==="nova"?"nova":kind==="illegal"?"cache":"legal");
   if(p.argent<prix)return;
-  if(kind==="legal"){p.scar=p.scar||{rel:20,visits:0,good:0,spent:0,m1:0,m2:0,disc:0};if(scDealOn(p,item))p.scar.dealUsed=state.jour||1;p.scar.visits++;p.scar.lastBuy=item.nom;p.scar.spent+=prix}
+  if(kind==="legal"){p.scar=p.scar||{rel:20,visits:0,good:0,spent:0,m1:0,m2:0,disc:0,purchases:[]};if(scDealOn(p,item))p.scar.dealUsed=state.jour||1;p.scar.visits++;p.scar.lastBuy=item.nom;p.scar.spent+=prix;p.scar.purchases=p.scar.purchases||[]}
   if(item.kind==="mxup"){
     const key=item.id.slice(3);p.mx=p.mx||{};
     if(p.mx[key]){alert("Amélioration déjà installée.");return}
@@ -3138,6 +3139,12 @@ function buy(kind,id){
   } else p.items.push({id:uid(),name:item.nom,note:kind,slots:item.slots||1,pendingDelete:false,tag:item.kind||item.id,uses:item.uses,blocks:item.blocks});
   {const _l=p.items[p.items.length-1];if(_l&&techName(_l.name)&&!_l.bag){_l.bag="tech";_l.slots=0}}
   txBuy(p,item,prix);
+  if(kind==="legal"){
+    p.scar=p.scar||{rel:20,visits:0,good:0,spent:0,m1:0,m2:0,disc:0,purchases:[]};
+    p.scar.purchases=p.scar.purchases||[];
+    p.scar.purchases.unshift({item:item.nom,qty:item.qty||1,spent:prix,j:state.jour||1});
+    p.scar.purchases=p.scar.purchases.slice(0,80);
+  }
   if(kind==="illegal")p.heat=Math.min(100,(p.heat||0)+2);
   if(kind==="nova")p.heat=Math.min(100,(p.heat||0)+3);
   save();
@@ -7308,7 +7315,601 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
   };
 })();
 </script>
+<script id="scarlett-v22-secret-rules">
+/* V22 : progression secrète telle que prévue à l'origine.
+   - Missions de Scarlett + aide en magasin + 3000$ dépensés => niveau 5 visible.
+   - Avant cela : aucune barre de relation.
+   - Quand il pleut et que les prérequis sont remplis : Scarlett quitte le comptoir,
+     la réserve devient accessible par glissement vers la droite.
+   - La chambre reste cachée jusqu'à la fin de la mission secrète. */
+(function(){
+  function secretProgressUnlocked(s){
+    return !!(s && scMale() && s.m1 && s.m2 && s.m4 && (s.spent||0)>=3000);
+  }
+
+  /* Le niveau 5 est le niveau de confiance qui débloque la piste secrète. */
+  window.scPre = secretProgressUnlocked;
+  window.scLv = function(s){
+    let l=1+LVT.filter(x=>s && s.rel>=x).length;
+    if(l>5) l=5;
+    return l;
+  };
+
+  /* La pluie ouvre directement la réserve, sans faire apparaître la piste avant. */
+  window.r6Pre = function(s){
+    return secretProgressUnlocked(s) && scLv(s)>=5 && R6(s)===0;
+  };
+  window.r6Ready = function(s){
+    return r6Pre(s) && scRain();
+  };
+
+  const oldScarPaint=window.scarPaint;
+  window.scarPaint=function(){
+    const b=$s('scBub'),r=$s('scReply'),g=$s('scRel'),s=scarP();
+    if(!b||!s)return oldScarPaint&&oldScarPaint();
+    if(scEmpty){
+      b.textContent='Le comptoir est vide… Une porte entrouverte, sur la droite. ➜';
+      b.classList.remove('tap');
+      r.innerHTML='<button onclick="scarReserve()">Glisser vers la droite ▶ (réserve)</button>';
+      g.style.display='none';
+      return;
+    }
+    b.textContent='« '+scLine+' »';
+    b.classList.toggle('tap',scMode===0);
+    const n=SCAR[scKey];
+    r.innerHTML=scMode===1&&n?n.c.map((c,i)=>`<button onclick="scarPick('${scKey}',${i})">${c[0]}</button>`).join(''):'';
+
+    /* La barre de relation est volontairement invisible tant que le joueur n'a
+       pas accompli les missions et dépensé 3000$. */
+    if(!secretProgressUnlocked(s) && R6(s)!==5){
+      g.style.display='none';
+      return;
+    }
+    const L=scLv(s);
+    g.style.display='block';
+    g.innerHTML=`❤ Niv. ${L} · ${LVN[L-1]} · ${s.rel}/100<div class="scBar"><i style="width:${s.rel}%"></i></div><small>`+
+      (R6(s)===5?'Mission secrète terminée ✅':'Confiance maximale atteinte · Reviens quand il pleut…')+'</small>';
+  };
+
+  /* Sécurité supplémentaire : le bouton chambre reste strictement réservé à
+     la mission secrète terminée. */
+  const oldRoomUI=window.scRoomUI;
+  window.scRoomUI=function(){
+    const s=scarP();
+    if(s && R6(s)!==5){
+      const b=document.getElementById('scRoomBox');
+      if(b)b.remove();
+      return;
+    }
+    return oldRoomUI&&oldRoomUI();
+  };
+
+  try{scEmpty=r6Ready(scarP()||{});scarPaint();scRoomUI()}catch(e){}
+})();
+</script>
 </body>
+<style id="scarlett-v23-room-interactions">
+/* V23 : la chambre devient un vrai lieu d'interaction. */
+.scRoomVideoModal{position:relative}
+.scRoomHotspot{position:absolute;z-index:12;border:0;background:#0000;color:#fff;cursor:pointer;outline:none}
+.scRoomHotspot:active{background:#fff1}
+.scRoomHotspot.scar{right:8%;top:30%;width:34%;height:46%;border-radius:45%}
+.scRoomHotspot.bed{left:34%;bottom:17%;width:58%;height:34%;border-radius:24px}
+.scRoomHint{padding:8px 12px;font-size:.72rem;color:#cbd5e1;text-align:center;background:#0b1020}
+</style>
+<script id="scarlett-v23-room-interactions">
+(function(){
+  /* La progression secrète est destinée aux deux genres. La romance de chambre,
+     elle, reste réservée au personnage masculin. */
+  function secretProgressUnlockedV23(s){return !!(s && s.m1 && s.m2 && s.m4 && (s.spent||0)>=3000)}
+  window.scPre=secretProgressUnlockedV23;
+  window.r6Pre=function(s){return secretProgressUnlockedV23(s) && scLv(s)>=5 && R6(s)===0};
+  window.r6Ready=function(s){return window.r6Pre(s) && scRain()};
+
+  function customerPool(){
+    const me=selected();
+    const all=(state.players||[]).filter(p=>p&&p.scar&&Array.isArray(p.scar.purchases)&&p.scar.purchases.length&&((p.scar.spent||0)>0));
+    const others=all.filter(p=>!me||p.id!==me.id);
+    return others.length?others:all;
+  }
+  function customerReport(){
+    const pool=customerPool();
+    if(!pool.length){
+      return '« Pour être honnête, je n’ai pas encore assez de souvenirs de clients. Reviens plus tard. »';
+    }
+    const p=pool[Math.floor(Math.random()*pool.length)];
+    const name=p.nomRp||'quelqu’un';
+    const total=(p.scar&&p.scar.spent)||0;
+    const rows={};
+    (p.scar.purchases||[]).forEach(x=>{
+      const k=x.item||'Article'; rows[k]=(rows[k]||0)+(x.qty||1);
+    });
+    const list=Object.entries(rows).map(([n,q])=>`${q}× ${n}`).join(', ');
+    return `« Oui… il y avait <b>${name}</b>. Il a dépensé <b>${total}$</b> chez moi. Je me souviens de ses achats : <b>${list}</b>. »`;
+  }
+  window.scarRoomCustomerTalk=function(){
+    const html=`<div class="scRoomTalk"><div class="rtK">Scarlett · souvenirs de la boutique</div><div class="rtTxt">« Tu voulais savoir qui est passé à l’épicerie ? »</div><div class="rtBtns"><button class="ok" onclick="scarRoomCustomerReport()">Oui, raconte-moi.</button><button onclick="scarClose();scarRoomOpenAmbient()">Retour</button></div></div>`;
+    scarOv(html);
+  };
+  window.scarRoomCustomerReport=function(){
+    const html=`<div class="scRoomTalk"><div class="rtK">Un souvenir au hasard</div><div class="rtTxt">${customerReport()}</div><div class="rtBtns"><button onclick="scarRoomCustomerTalk()">Demander autre chose</button><button onclick="scarClose();scarRoomOpenAmbient()">Retour</button></div></div>`;
+    scarOv(html);
+  };
+  function openRoomScene(){
+    const s=scarP(),p=selected();
+    if(!s||!p||R6(s)!==5||scEmpty||scRoomLeft(s)>0)return;
+    if(scMale() && countCondo(p)<1){alert('Il te faut un préservatif pour cette scène.');return}
+    stopRoomVideoV23();
+    const key=(window.scarlettRoomVideoLoops&&window.scarlettRoomVideoLoops.current&&window.scarlettRoomVideoLoops.current())||'phoneDay';
+    const videos={phoneDay:'videos/scarlett_room_phone_day.mp4',windowDay:'videos/scarlett_room_window_day.mp4',phoneNight:'videos/scarlett_room_phone_night.mp4'};
+    scarOv('<div class="scRoomVideoModal"><div class="scRoomVideoFrame"><video id="scRoomAmbientVideoV23" autoplay loop muted playsinline preload="auto"></video><button class="scRoomHotspot scar" aria-label="Parler à Scarlett" onclick="scarRoomCustomerTalk()"></button><button class="scRoomHotspot bed" aria-label="Interagir avec le lit" onclick="scarRoomBed()"></button></div><div class="scRoomHint">Clique sur Scarlett pour lui parler · Clique sur le lit pour voir ce qui est possible</div><div class="scRoomVideoActions"><button onclick="scarRoomCloseAmbientV23()">Sortir de la chambre</button></div></div>');
+    const v=document.getElementById('scRoomAmbientVideoV23'); if(v){v.src=videos[key];v.play().catch(()=>{})}
+  }
+  function stopRoomVideoV23(){const v=document.getElementById('scRoomAmbientVideoV23');if(v){try{v.pause()}catch(e){};v.remove()}}
+  window.scarRoomOpenAmbient=openRoomScene;
+  window.scarRoomCloseAmbientV23=function(){stopRoomVideoV23();scarClose();try{scarRoomUI()}catch(e){}};
+  window.scarRoomBed=function(){
+    const s=scarP(),p=selected();
+    if(!s||!p||R6(s)!==5)return;
+    if(!scMale()){
+      scarOv('<div class="scRoomTalk"><div class="rtK">Scarlett</div><div class="rtTxt">« Le lit ? 😄 Non. Avec toi, on garde notre secret… et notre complicité. »</div><div class="rtBtns"><button onclick="scarRoomOpenAmbient()">Retour</button></div></div>');
+      return;
+    }
+    stopRoomVideoV23();
+    const N=s.roomN||0; let k=N%ROOM_L.length;
+    if(N>=ROOM_L.length){do{k=Math.floor(Math.random()*ROOM_L.length)}while(k===s.roomK&&ROOM_L.length>1)}
+    s.roomK=k;
+    const L=ROOM_L[k],nk=nick();
+    scarClose();
+    scCine('casual',L[0].replace(/\{n\}/g,nk),[['La suivre','scarRoomMaleCine(1)'],['Plus tard','scarRoomOpenAmbient()']]);
+  };
+  window.scarRoomMaleCine=function(step){
+    const s=scarP(),p=selected(); if(!s||!p||!scMale()||R6(s)!==5)return;
+    if(step!==1)return;
+    scarClose();scarOv('<div style="font-size:1.4rem;letter-spacing:.3em">…</div>');$s('scOv').firstChild.classList.add('scBlack');
+    setTimeout(()=>{
+      const lost=scCondoLose(p);s.roomAt=Date.now();s.roomN=(s.roomN||0)+1;s.rel=Math.min(100,(s.rel||0)+2);scarSave();
+      scarOv('<p>'+ROOM_L[s.roomK][1].replace(/\{n\}/g,nick())+'</p>'+scCondoTxt(p,lost)+'<p><small>Elle sera de nouveau disponible dans 20 min.</small></p><button onclick="scarClose();scarIdle();scRoomUI()">OK</button>');
+      $s('scOv').firstChild.classList.add('scBlack');
+    },2200);
+  };
+
+  /* À l'entrée de la chambre, on remplace l'ancien bouton Continuer par la scène interactive. */
+  window.scRoom=function(step){
+    const s=scarP(),p=selected(); if(!s||!p||R6(s)!==5)return;
+    if(scRoomLeft(s)>0){scRoomUI();return}
+    if(step===0)return openRoomScene();
+    return openRoomScene();
+  };
+
+  /* La chambre ne dépend plus d'un préservatif pour une joueuse. */
+  const oldRoomUIV23=window.scRoomUI;
+  window.scRoomUI=function(){
+    const sc=document.querySelector('#p-shop .scene'),s=scarP(),p=selected();if(!sc||!s||!p)return;
+    let b=document.getElementById('scRoomBox');
+    if(R6(s)!==5||scEmpty){if(b)b.remove();return}
+    if(!b){b=document.createElement('div');b.id='scRoomBox';b.className='scRoom';const rp=document.getElementById('scReply');(rp?rp.parentNode:sc).insertBefore(b,rp?rp.nextSibling:null)}
+    const left=scRoomLeft(s);
+    if(left>0)b.innerHTML='<button disabled>💤 Chambre de Scarlett · dans '+Math.ceil(left/60000)+' min</button>';
+    else b.innerHTML='<button class="ok" onclick="scRoom(0)">🚪 Rejoindre Scarlett dans sa chambre</button><small>'+(scMale()?(countCondo(p)+' préservatif(s) disponible(s)'):'Accès à la chambre · discussion avec Scarlett')+'</small>';
+  };
+  const oldPaintV23=window.scarPaint;
+  window.scarPaint=function(){const r=oldPaintV23.apply(this,arguments);try{window.scRoomUI()}catch(e){}return r};
+  try{window.scRoomUI()}catch(e){}
+})();
+</script>
+
+<style id="asphalte-v24-burglaries">
+/* V24 — cambriolages : mini-jeu de discrétion */
+.burgModal{width:min(94vw,760px);max-height:92vh;overflow:auto;background:#0b1020;color:#fff;border-radius:22px;box-shadow:0 24px 80px #000c;padding:14px}
+.burgModal h3{margin:0 0 4px}.burgModal .mut{color:#a9b6c8}
+.burgGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.burgCell{min-height:72px;border:1px solid #334155;border-radius:14px;background:#111a2c;color:#fff;padding:8px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer}
+.burgCell:hover{background:#17243a}.burgCell.seen{outline:2px solid #64748b}.burgCell.done{opacity:.5}
+.burgCell.hide{background:#172b24}
+.burgActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.burgActions button{margin:0;background:#182235;color:#fff;border-color:#334155}.burgActions .ok{background:#14532d;border-color:#166534}.burgActions .danger{background:#5f1717;border-color:#7f1d1d}
+.burgStatus{padding:9px 11px;border-radius:14px;background:#111827;border:1px solid #334155;margin-top:8px;font-size:.86rem}
+.burgTimer{font-size:1.35rem;font-weight:800;text-align:center;padding:10px;border-radius:14px;background:#3f1111;border:1px solid #7f1d1d;margin-top:8px}
+.burgLoot{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.burgLoot span{padding:5px 9px;border-radius:999px;background:#1e293b;border:1px solid #475569;font-size:.75rem}
+.burgMapBtn{position:absolute;z-index:6;pointer-events:auto;transform:translate(-50%,-50%);border:1px solid #fff8!important;background:#111827dd!important;color:#fff!important;border-radius:999px!important;padding:4px 8px!important;font-size:.62rem!important;margin:0!important}
+@media(max-width:520px){.burgGrid{gap:5px}.burgCell{min-height:64px;padding:6px;font-size:.78rem}.burgActions{grid-template-columns:1fr}}
+</style>
+<script id="asphalte-v24-burglaries">
+(function(){
+  const HOUSE_NAMES=[
+    "Villa des Tilleuls","Maison du Canal","Pavillon Bleu","Villa Sunset",
+    "Maison du Parc","Résidence Émeraude","Maison du Lac","Villa Horizon",
+    "Maison des Roses","Pavillon Central","Villa du Port","Maison Blanche"
+  ];
+  const LOOT=[
+    ["Argent liquide",70,260],["Montre ancienne",80,220],["Console de jeu",120,320],
+    ["Appareil photo",140,380],["Bijou",180,520],["Ordinateur portable",220,650],
+    ["Téléphone",90,280],["Sac de créateur",160,420],["Collection rare",250,800]
+  ];
+  const CELL_NAMES=[
+    ["Entrée","salon"],["Salon","salon"],["Cuisine","cuisine"],
+    ["Couloir","couloir"],["Chambre","chambre"],["Bureau","bureau"],
+    ["Salle de bain","sdb"],["Placard","hide"],["Sous le lit","hide"]
+  ];
+  let ctx=null,timer=null;
+
+  function me(){return selected&&selected()}
+  function ensure(p){
+    p.burg=p.burg||{wins:0,attempts:0,heat:0,loot:0};
+    return p.burg;
+  }
+  function esc(s){return escH?s=escH(s):String(s);return s}
+  function pick(a){return a[Math.floor(Math.random()*a.length)]}
+  function chance(n){return Math.random()<n}
+  function addHeat(p,n){p.heat=Math.min(100,(p.heat||0)+n);const b=ensure(p);b.heat=Math.min(100,(b.heat||0)+n)}
+  function addItem(p,name,qty){
+    p.items=p.items||[];
+    p.items.push({id:uid(),name,qty:qty||1,note:"Butin · cambriolage",slots:1,bag:"tech",stolen:true});
+  }
+  function targetFor(p,r){
+    const difficulty = r && r.tier==="metro" ? 0.56 : r && r.tier==="ville" ? 0.46 : r && r.tier==="zone" ? 0.38 : 0.30;
+    const occupants=chance(0.55)?(chance(.18)?2:1):0;
+    const alarm=chance(difficulty) ? (chance(.35)?"fort":"simple") : "aucune";
+    const lootCount=2+Math.floor(Math.random()*3);
+    const loot=[];
+    for(let i=0;i<lootCount;i++){
+      const x=pick(LOOT);
+      if(!loot.some(z=>z.name===x[0]))loot.push({name:x[0],min:x[1],max:x[2]});
+    }
+    return {
+      rid:r.id,region:r.nom,house:pick(HOUSE_NAMES),tier:r.tier||"zone",
+      occupants,alarm,inspected:false,entered:false,alerted:false,escaped:false,
+      cells:CELL_NAMES.map((x,i)=>({name:x[0],type:x[1],looted:false,npc:i===1&&occupants>0})),
+      loot,found:[],cash:0,moves:0
+    };
+  }
+  function show(html){
+    scarOv('<div class="burgModal">'+html+'</div>');
+  }
+  function close(){
+    clearInterval(timer);timer=null;ctx=null;
+    try{scarClose()}catch(e){}
+  }
+  function regionAt(pct){
+    try{return typeof terrAt==="function"?terrAt(pct.x,pct.y):null}catch(e){return null}
+  }
+
+  window.burgMapClick=function(pct){
+    const r=regionAt(pct);
+    if(!r)return false;
+    openRegion(r);
+    return true;
+  };
+
+  function openRegion(r){
+    const p=me(); if(!p)return false;
+    ctx=targetFor(p,r);
+    const b=ensure(p);b.attempts=(b.attempts||0)+1;
+    show(
+      '<h3>🏠 Cambriolage · '+esc(ctx.region)+'</h3>'+
+      '<p class="mut">Une maison a été repérée : <b>'+esc(ctx.house)+'</b>.</p>'+
+      '<div class="burgStatus">Tu peux observer les alentours avant de décider d’entrer. Partir annule la tentative.</div>'+
+      '<div class="burgActions">'+
+      '<button onclick="burgObserve()">👁️ Regarder autour</button>'+
+      '<button class="danger" onclick="burgLeave()">Partir</button>'+
+      '<button class="ok" onclick="burgEnter()">🚪 Entrer par effraction</button>'+
+      '</div>'
+    );
+    return true;
+  }
+
+  window.burgObserve=function(){
+    if(!ctx)return;
+    ctx.inspected=true;
+    const people=ctx.occupants===0?"Personne visible.":ctx.occupants===1?"Une personne semble être à l’intérieur.":"Deux personnes semblent être à l’intérieur.";
+    const al=ctx.alarm==="aucune"?"Aucune alarme détectée.":ctx.alarm==="simple"?"Une alarme est possible.":"Le système semble fortement sécurisé.";
+    show('<h3>👁️ Observation</h3><div class="burgStatus">'+people+'<br>'+al+'<br>Tu peux tenter d’entrer ou repartir.</div>'+
+      '<div class="burgActions"><button class="ok" onclick="burgEnter()">Entrer</button><button onclick="burgLeave()">Partir</button></div>');
+  };
+
+  window.burgLeave=function(){close();render();};
+
+  function startTimer(){
+    clearInterval(timer);
+    let left=12;
+    function paint(){
+      const el=document.getElementById("burgTimer");
+      if(el)el.textContent="⏱️ "+left+" s";
+    }
+    paint();
+    timer=setInterval(()=>{
+      left--;paint();
+      if(left<=0){clearInterval(timer);timer=null;burgEscape("Le temps est écoulé. Tu as fui avant que la situation dégénère.");}
+    },1000);
+  }
+
+  window.burgEnter=function(){
+    if(!ctx)return;
+    ctx.entered=true;
+    const p=me();
+    if(!p)return;
+    let triggered=false;
+    if(ctx.alarm==="fort"&&chance(.52))triggered=true;
+    else if(ctx.alarm==="simple"&&chance(.28))triggered=true;
+    if(triggered){
+      ctx.alerted=true;addHeat(p,15);
+      show('<h3>🚨 Alerte</h3><div class="burgStatus">Une alarme se déclenche. Quelqu’un peut te repérer.</div><div id="burgTimer" class="burgTimer"></div>'+
+        '<div class="burgActions"><button onclick="burgEscape(\'Tu as pris la fuite.\')">🏃 Fuir</button>'+
+        '<button class="danger" onclick="burgConfront()">⚠️ Affronter</button></div>');
+      startTimer();return;
+    }
+    renderHouse();
+  };
+
+  function renderHouse(){
+    if(!ctx)return;
+    const p=me();
+    const weapon=!!(p&&((p.items||[]).some(i=>isGunName&&isGunName(i.name))));
+    const npc=ctx.occupants>0;
+    const left=ctx.loot.filter((_,i)=>!ctx.found.includes(i));
+    show(
+      '<h3>🏠 À l’intérieur · '+esc(ctx.house)+'</h3>'+
+      '<div class="burgStatus">'+
+      (npc?'Il y a '+ctx.occupants+' occupant(s). Déplace-toi discrètement et utilise les cachettes si nécessaire.':'La maison semble vide.')+
+      (weapon?' Tu as une arme dans ton inventaire.':' Tu n’as pas d’arme dans ton inventaire.')+
+      '</div>'+
+      '<div class="burgGrid">'+ctx.cells.map((c,i)=>{
+        const cl=(c.looted?"done ":"")+(c.type==="hide"?"hide ":"");
+        return '<button class="burgCell '+cl+'" onclick="burgMove('+i+')">'+esc(c.name)+(c.npc&&!ctx.alerted?' · présence':'')+'</button>';
+      }).join("")+'</div>'+
+      '<div class="burgLoot">'+left.map(x=>'<span>'+esc(x.name)+'</span>').join("")+'</div>'+
+      '<div class="burgActions"><button onclick="burgLeave()">Sortir</button><button class="ok" onclick="burgTakeAll()">Prendre ce qui reste</button></div>'
+    );
+  }
+
+  window.burgMove=function(i){
+    if(!ctx)return;
+    const p=me();if(!p)return;
+    const c=ctx.cells[i];if(!c||c.looted)return;
+    ctx.moves++;
+    if(ctx.occupants>0&&!ctx.alerted){
+      let detect=.16 + ctx.moves*.045;
+      if(c.type==="hide")detect=.03;
+      if(chance(Math.min(.72,detect))){
+        ctx.alerted=true;addHeat(p,20);
+        show('<h3>👀 Tu as été repéré</h3><div class="burgStatus">Un occupant t’a remarqué.</div><div id="burgTimer" class="burgTimer"></div>'+
+          '<div class="burgActions"><button onclick="burgEscape(\'Tu as quitté la maison.\')">🏃 Fuir</button>'+
+          '<button class="danger" onclick="burgConfront()">⚠️ Affronter</button></div>');
+        startTimer();return;
+      }
+    }
+    if(c.type==="hide"){
+      show('<h3>🫥 Cachette</h3><div class="burgStatus">Tu te caches dans <b>'+esc(c.name)+'</b>. Le risque de détection est réduit.</div>'+
+        '<div class="burgActions"><button class="ok" onclick="burgContinue('+i+')">Continuer</button><button onclick="burgLeave()">Sortir</button></div>');
+      return;
+    }
+    burgContinue(i);
+  };
+
+  window.burgContinue=function(i){
+    if(!ctx)return;
+    const c=ctx.cells[i];if(c)c.looted=true;
+    renderHouse();
+  };
+
+  window.burgTakeAll=function(){
+    if(!ctx)return;
+    const p=me();if(!p)return;
+    const remaining=ctx.loot.map((x,i)=>({x,i})).filter(z=>!ctx.found.includes(z.i));
+    if(!remaining.length){show('<h3>Vide</h3><div class="burgStatus">Il n’y a plus rien à récupérer.</div><div class="burgActions"><button onclick="burgLeave()">Sortir</button></div>');return}
+    let cash=0,items=[];
+    remaining.forEach(z=>{
+      const x=z.x;
+      if(x.name==="Argent liquide"){cash+=x.min+Math.floor(Math.random()*(x.max-x.min+1))}
+      else{addItem(p,x.name,1);items.push(x.name)}
+      ctx.found.push(z.i);
+    });
+    if(cash){p.argent=(p.argent||0)+cash;try{logTx(p,"Butin · cambriolage",cash)}catch(e){}}
+    const b=ensure(p);b.wins=(b.wins||0)+1;b.loot=(b.loot||0)+cash+items.length;
+    save();
+    show('<h3>💰 Butin récupéré</h3><div class="burgStatus">'+(cash?'Argent : <b>'+cash+'$</b><br>':'')+
+      (items.length?'Objets : <b>'+items.map(esc).join(', ')+'</b>':'Aucun objet')+
+      '</div><div class="burgActions"><button class="ok" onclick="burgLeave()">Terminer</button></div>');
+  };
+
+  window.burgConfront=function(){
+    clearInterval(timer);timer=null;
+    const p=me();if(!ctx||!p)return;
+    const armed=!!((p.items||[]).some(i=>isGunName&&isGunName(i.name)));
+    if(!armed){
+      burgEscape("Tu n’as pas d’arme : tu prends la fuite.");
+      return;
+    }
+    addHeat(p,30);
+    ctx.alerted=false;
+    show('<h3>⚠️ Confrontation</h3><div class="burgStatus">La confrontation met fin à la présence des occupants dans cette tentative. Aucun détail graphique.</div>'+
+      '<div class="burgActions"><button class="ok" onclick="burgContinueAfterConfront()">Continuer</button><button onclick="burgEscape(\'Tu as quitté les lieux.\')">Partir</button></div>');
+  };
+  window.burgContinueAfterConfront=function(){if(!ctx)return;ctx.occupants=0;ctx.cells.forEach(c=>c.npc=false);renderHouse();};
+
+  window.burgEscape=function(msg){
+    clearInterval(timer);timer=null;
+    const p=me();if(p){addHeat(p,10);save()}
+    show('<h3>🏃 Fuite</h3><div class="burgStatus">'+esc(msg||"Tu quittes la maison.")+'</div><div class="burgActions"><button class="ok" onclick="burgLeave()">Retour à la carte</button></div>');
+  };
+
+  /* Ajoute une indication légère sur les territoires sans toucher au déplacement/zoom. */
+  function drawBurglaryButtons(){
+    const md=document.getElementById("mapDots");if(!md||typeof REGIONS==="undefined")return;
+    if(md.querySelector(".burgMapBtn"))return;
+    REGIONS.forEach(r=>{
+      const btn=document.createElement("button");
+      btn.className="burgMapBtn";
+      btn.style.left=r.x+"%";btn.style.top=r.y+"%";
+      btn.textContent="🏠";
+      btn.title="Chercher une maison";
+      btn.onclick=function(e){e.stopPropagation();openRegion(r)};
+      md.appendChild(btn);
+    });
+  }
+  const oldDraw=window.drawMapPin;
+  window.drawMapPin=function(){try{if(oldDraw)oldDraw();drawBurglaryButtons()}catch(e){}};
+  setTimeout(()=>{try{drawBurglaryButtons()}catch(e){}},700);
+})();
+</script>
+
+<style id="asphalte-v24-bed-cinematics">
+.scBedVideoModal{width:min(94vw,760px);background:#050509;color:#fff;border-radius:22px;overflow:hidden;box-shadow:0 24px 80px #000d}
+.scBedVideoFrame{background:#000;display:flex;justify-content:center;align-items:center;min-height:240px}
+.scBedVideoFrame video{display:block;width:100%;height:auto;max-height:78vh;object-fit:contain}
+.scBedVideoBar{display:flex;gap:8px;padding:10px;background:#0b1020}
+.scBedVideoBar button{flex:1;margin:0;background:#182235;color:#fff;border-color:#334155}
+</style>
+<script id="asphalte-v24-bed-cinematics">
+(function(){
+  const BED_VIDEOS=["jeux/scarlett_bed_01.mp4","jeux/scarlett_bed_02.mp4"];
+  let bedVideo=null;
+  function stop(){
+    if(bedVideo){try{bedVideo.pause()}catch(e){}bedVideo.removeAttribute("src");try{bedVideo.load()}catch(e){}bedVideo.remove();bedVideo=null}
+  }
+  function pick(){return BED_VIDEOS[Math.floor(Math.random()*BED_VIDEOS.length)]}
+  window.scarRoomBedVideo=function(){
+    const s=scarP(),p=selected();
+    if(!s||!p||R6(s)!==5)return;
+    stop();
+    scarOv('<div class="scBedVideoModal"><div class="scBedVideoFrame"><video id="scBedVideo" autoplay muted playsinline preload="auto"></video></div><div class="scBedVideoBar"><button onclick="scarBedVideoClose()">Retour</button></div></div>');
+    bedVideo=document.getElementById("scBedVideo");
+    if(bedVideo){bedVideo.src=pick();bedVideo.autoplay=true;bedVideo.muted=true;bedVideo.playsInline=true;bedVideo.onended=function(){scarBedVideoClose()};bedVideo.play().catch(()=>{})}
+  };
+  window.scarBedVideoClose=function(){stop();try{scarClose()}catch(e){}try{scarRoomOpenAmbient()}catch(e){}};
+
+  /* Le lit lance désormais directement l’une des deux nouvelles vidéos. */
+  window.scarRoomBed=function(){
+    const s=scarP(),p=selected();
+    if(!s||!p||R6(s)!==5)return;
+    stop();
+    try{scarClose()}catch(e){}
+    scarRoomBedVideo();
+  };
+
+  /* À la fin de la mission secrète, le joueur masculin peut lancer la scène.
+     Pour une joueuse, la mission se termine normalement et la chambre reste accessible. */
+  const oldEnd=window.scEnd;
+  window.scEnd=function(){
+    return oldEnd.apply(this,arguments);
+  };
+
+  /* On ajoute un crochet au bouton de fin créé par scEnd : il reste volontairement
+     déclenché par l’action du joueur pour éviter une vidéo lancée sans interaction. */
+  const oldScarClose=window.scarClose;
+  window.scarClose=function(){
+    const result=oldScarClose.apply(this,arguments);
+    return result;
+  };
+
+  window.scarSecretBedAfterFinish=function(){
+    if(scMale&&scMale())scarRoomBedVideo();
+    else{try{scarRoomUI()}catch(e){}}
+  };
+
+  /* Remplace le texte de fin après que l’ancienne fonction a affiché sa carte.
+     Le hook observe le panneau et transforme seulement le bouton OK. */
+  function hookFinish(){
+    const ov=document.getElementById("scOv");if(!ov)return;
+    const btn=ov.querySelector("button");
+    if(!btn)return;
+    if((ov.textContent||"").includes("MISSION SECRÈTE TERMINÉE") && !btn.dataset.v24){
+      btn.dataset.v24="1";
+      btn.textContent=scMale&&scMale()?"Continuer":"OK";
+      if(scMale&&scMale())btn.setAttribute("onclick","scarSecretBedAfterFinish()");
+    }
+  }
+  const obs=new MutationObserver(()=>hookFinish());
+  const ov=document.getElementById("scOv");if(ov)obs.observe(ov,{childList:true,subtree:true});
+  setInterval(hookFinish,500);
+})();
+</script>
+
+
+<style id="asphalte-v25-burglar-freeplay">
+.bfModal{width:min(96vw,920px);background:#07111c;color:#fff;border-radius:22px;overflow:hidden;box-shadow:0 24px 90px #000d}
+.bfHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0c1724;border-bottom:1px solid #243244}.bfHead b{font-size:.95rem}.bfCanvasWrap{position:relative;background:#050a10;touch-action:none}.bfCanvas{display:block;width:100%;height:auto;background:#0a1017;touch-action:none}.bfHint{position:absolute;left:10px;top:10px;right:10px;pointer-events:none;font-size:.72rem;text-shadow:0 2px 4px #000;color:#dbeafe}.bfBtns{display:flex;gap:7px;flex-wrap:wrap;padding:8px;background:#0c1724}.bfBtns button{margin:0;flex:1 1 120px;background:#182536;color:#fff;border-color:#334155}.bfBtns .act{background:#14532d;border-color:#166534}.bfBtns .warn{background:#713f12;border-color:#a16207}.bfBtns .danger{background:#641b1b;border-color:#8f2222}.bfJoy{position:absolute;left:16px;bottom:16px;width:116px;height:116px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff45;touch-action:none}.bfStick{position:absolute;width:50px;height:50px;left:31px;top:31px;border-radius:50%;background:#ffffff55;border:1px solid #ffffff80}.bfInteract{position:absolute;right:12px;bottom:14px;display:flex;flex-direction:column;gap:7px;align-items:flex-end}.bfInteract button{margin:0;min-width:132px;background:#182536;color:#fff;border-color:#64748b;box-shadow:0 4px 12px #0008}.bfInteract .act{background:#14532d}.bfInteract .warn{background:#713f12}.bfStatus{padding:7px 10px;background:#101b29;border-top:1px solid #243244;font-size:.76rem;min-height:20px}.bfModal .bfTopBtns button{margin:0;background:#182536;color:#fff;border-color:#334155}.bfTopBtns{display:flex;gap:6px}.bfAlert{padding:10px;background:#3a1010;border-top:1px solid #7f1d1d;text-align:center}.bfAlert b{font-size:1.15rem}.bfTimer{font-size:1.35rem;font-weight:900;margin:3px 0}.bfLegend{padding:5px 10px;font-size:.68rem;color:#94a3b8;background:#09131f}
+</style>
+<script id="asphalte-v25-burglar-freeplay">
+(function(){
+  const TILE=48,W=18,H=12;
+  let G=null,raf=0,last=0,joy={on:false,x:0,y:0,cx:0,cy:0},alertTimer=null;
+  const ROUTINES=[['douche','chambre','bureau','salon','chambre'],['salon','cuisine','bureau','salon','chambre'],['bureau','cuisine','salon','chambre','bureau'],['chambre','sdb','salon','cuisine','chambre']];
+  const FURN=[
+    {room:'salon',kind:'sofa',name:'Canapé',hide:true},
+    {room:'salon',kind:'tv',name:'Télévision'},
+    {room:'cuisine',kind:'table',name:'Table de cuisine',loot:true},
+    {room:'bureau',kind:'desk',name:'Bureau',loot:true},
+    {room:'chambre',kind:'bed',name:'Lit',hide:true,loot:true},
+    {room:'chambre',kind:'wardrobe',name:'Placard',hide:true,loot:true},
+    {room:'sdb',kind:'shower',name:'Douche'},
+    {room:'entree',kind:'console',name:'Meuble d’entrée',loot:true},
+    {room:'cuisine',kind:'cabinet',name:'Placard de cuisine',loot:true}
+  ];
+  const LOOT=['Argent liquide','Montre','Téléphone','Console','Appareil photo','Bijou','Ordinateur portable','Sac'];
+  const esc2=s=>typeof escH==='function'?escH(String(s)):String(s).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  function me(){return typeof selected==='function'?selected():null}
+  function weapon(p){return !!(p&&((p.items||[]).some(i=>typeof isGunName==='function'&&isGunName(i.name))))}
+  function addLoot(p,name){p.items=p.items||[];p.items.push({id:typeof uid==='function'?uid():('burg'+Date.now()+Math.random()),name,qty:1,note:'Butin · cambriolage',slots:1,bag:'tech',stolen:true})}
+  function addHeat(p,n){if(!p)return;p.heat=Math.min(100,(p.heat||0)+n);try{save()}catch(e){}}
+  function regionAt2(pct){try{if(typeof terrAt==='function')return terrAt(pct.x,pct.y)}catch(e){}return null}
+  function roomRect(room,layout){const map=(layout||G&&G.layout)||{entree:[1,5,3,2],salon:[4,1,6,5],cuisine:[10,1,7,4],couloir:[8,5,3,2],chambre:[4,7,6,4],bureau:[10,6,7,5],sdb:[1,1,3,3]};return map[room]||map.salon}
+  function centerRoom(room,layout){const r=roomRect(room,layout);return{x:(r[0]+r[2]/2)*TILE,y:(r[1]+r[3]/2)*TILE}}
+  function makeHouse(r){
+    const layouts=[
+      {entree:[1,5,3,2],salon:[4,1,6,5],cuisine:[10,1,7,4],couloir:[8,5,3,2],chambre:[4,7,6,4],bureau:[10,6,7,5],sdb:[1,1,3,3]},
+      {entree:[8,9,3,2],salon:[1,1,6,5],cuisine:[8,1,5,4],couloir:[7,5,3,4],chambre:[1,7,6,4],bureau:[10,6,7,5],sdb:[13,1,4,4]},
+      {entree:[1,2,3,2],salon:[4,1,7,5],cuisine:[11,1,6,3],couloir:[7,5,3,3],chambre:[1,5,6,6],bureau:[10,6,7,5],sdb:[14,4,3,4]}
+    ];
+    const layout=pick(layouts),occupants=Math.random()<.68?(Math.random()<.22?2:1):0;
+    const alarm=Math.random()<.43?(Math.random()<.25?'fort':'simple'):'aucune';
+    const rooms=Object.keys(layout);
+    const furniture=FURN.filter(f=>layout[f.room]).map((f,i)=>{const c=centerRoom(f.room,layout);return {...f,x:c.x+rnd(-35,35),y:c.y+rnd(-25,25),id:i,used:false,loot:!!f.loot&&Math.random()<.78}});
+    const npcs=[];
+    for(let i=0;i<occupants;i++){const routine=ROUTINES[Math.floor(Math.random()*ROUTINES.length)].map(x=>x==='douche'?'sdb':x).filter(x=>layout[x]);npcs.push({id:i,x:centerRoom(routine[0],layout).x,y:centerRoom(routine[0],layout).y,routine,ri:0,state:'walk',target:null,speed:rnd(34,48),fear:Math.random()<.35,wait:0})}
+    return {region:r&&r.nom||'Région',house:['Villa','Pavillon','Maison','Résidence'][Math.floor(Math.random()*4)]+' '+['du Parc','des Lilas','du Canal','Horizon','des Roses','Bleue'][Math.floor(Math.random()*6)],layout,alarm,rooms,furniture,npcs,player:{x:centerRoom('entree',layout).x,y:centerRoom('entree',layout).y,hidden:false,hideId:null},lootValue:0,looted:0,detected:false,police:false,noise:0,started:Date.now(),status:'Exploration libre'};
+  }
+  function open(r){const p=me();if(!p)return;G=makeHouse(r);render();startLoop();}
+  function shell(){return '<div class="bfModal"><div class="bfHead"><b>🏠 '+esc2(G.house)+' · '+esc2(G.region)+'</b><div class="bfTopBtns"><button onclick="burgFreeLeave()">Quitter</button></div></div><div class="bfCanvasWrap"><canvas id="bfCanvas" class="bfCanvas" width="864" height="576"></canvas><div class="bfHint">Joystick = déplacement libre · approche-toi des meubles pour voir les actions</div><div id="bfJoy" class="bfJoy"><div id="bfStick" class="bfStick"></div></div><div id="bfInteract" class="bfInteract"></div></div><div id="bfStatus" class="bfStatus"></div><div class="bfLegend">🟦 joueur · 🔴 PNJ · 🟩 cachette · 🟨 objets · ⚪ murs</div></div>'}
+  function render(){if(!G)return;scarOv(shell());updateStatus();updateActions();draw();}
+  function canvas(){return document.getElementById('bfCanvas')}
+  function ctx2(){const c=canvas();return c&&c.getContext('2d')}
+  function roomAt(x,y){for(const room of G.rooms){const r=roomRect(room,G.layout);if(x>=r[0]*TILE&&x<=(r[0]+r[2])*TILE&&y>=r[1]*TILE&&y<=(r[1]+r[3])*TILE)return room}return null}
+  function blocked(x,y){return x<18||y<18||x>W*TILE-18||y>H*TILE-18}
+  function draw(){const c=canvas(),x=c&&c.getContext('2d');if(!x||!G)return;x.clearRect(0,0,c.width,c.height);x.fillStyle='#071018';x.fillRect(0,0,c.width,c.height);
+    const colors={entree:'#1b2838',salon:'#202b3a',cuisine:'#263126',couloir:'#263342',chambre:'#302c3b',bureau:'#293334',sdb:'#263b45'};
+    G.rooms.forEach(room=>{const r=roomRect(room,G.layout);x.fillStyle=colors[room]||'#202a35';x.fillRect(r[0]*TILE,r[1]*TILE,r[2]*TILE,r[3]*TILE);x.strokeStyle='#e2e8f033';x.lineWidth=2;x.strokeRect(r[0]*TILE,r[1]*TILE,r[2]*TILE,r[3]*TILE);x.fillStyle='#94a3b8aa';x.font='11px sans-serif';x.fillText(room.toUpperCase(),r[0]*TILE+6,r[1]*TILE+15)});
+    G.furniture.forEach(f=>{x.save();x.translate(f.x,f.y);x.fillStyle=f.hide?'#245c3d':f.loot?'#80631b':'#49586a';x.fillRect(-18,-12,36,24);x.fillStyle='#fff';x.font='9px sans-serif';x.textAlign='center';x.fillText(f.name,-0,3);x.restore()});
+    G.npcs.forEach(n=>{x.beginPath();x.fillStyle=G.police?'#fb923c':'#ef4444';x.arc(n.x,n.y,9,0,Math.PI*2);x.fill();x.fillStyle='#fff';x.font='8px sans-serif';x.textAlign='center';x.fillText('PNJ',n.x,n.y-13)});
+    const p=G.player;x.beginPath();x.fillStyle=p.hidden?'#22c55e':'#38bdf8';x.arc(p.x,p.y,10,0,Math.PI*2);x.fill();x.fillStyle='#fff';x.font='9px sans-serif';x.textAlign='center';x.fillText(p.hidden?'CACHÉ':'TOI',p.x,p.y-14);
+    if(G.detected){x.fillStyle='#ef444433';x.fillRect(0,0,c.width,c.height)}
+  }
+  function nearest(){if(!G)return null;let best=null,bd=62;for(const f of G.furniture){const d=dist(G.player,f);if(d<bd){bd=d;best=f}}return best}
+  function updateActions(){const box=document.getElementById('bfInteract');if(!box||!G)return;const f=nearest();let h='';if(G.player.hidden){h='<button class="act" onclick="burgFreeUnhide()">SORTIR DE LA CACHE</button>'}else if(f){if(f.hide)h+='<button class="act" onclick="burgFreeHide()">CACHER</button>';if(f.loot&&!f.used)h+='<button class="warn" onclick="burgFreeLoot()">VOLER OBJETS</button>'}box.innerHTML=h}
+  function updateStatus(){const s=document.getElementById('bfStatus');if(!s||!G)return;const f=nearest();let t=G.status;if(f&&!G.player.hidden)t+=' · '+f.name;if(G.alarm!=='aucune')t+=' · Alarme: '+G.alarm;if(G.npcs.length)t+=' · '+G.npcs.length+' PNJ';s.textContent=t}
+  function move(dx,dy,dt){if(!G||G.detected)return;const p=G.player;if(p.hidden)return;const sp=145;let nx=p.x+dx*sp*dt,ny=p.y+dy*sp*dt;if(!blocked(nx,ny)){p.x=Math.max(20,Math.min(W*TILE-20,nx));p.y=Math.max(20,Math.min(H*TILE-20,ny));}}
+  function noise(amount){G.noise=Math.max(G.noise,amount);if(G.npcs.length){G.npcs.forEach(n=>{const d=dist(n,G.player);if(d<210){const fear=n.fear&&amount>35;if(fear){G.police=true;G.detected=true;alertState('Un PNJ paniqué appelle immédiatement la police.');}else if(amount>25){n.target={x:G.player.x,y:G.player.y};n.state='investigate';}}});}}
+  function detect(){if(G.player.hidden)return;for(const n of G.npcs){const d=dist(n,G.player);if(d<95){const f=G.player;G.detected=true;G.status='Tu as été repéré !';addHeat(me(),18);alertState('Un occupant t’a repéré.');return}if(d<145&&Math.random()<.008){G.detected=true;G.status='Un occupant t’a aperçu.';addHeat(me(),12);alertState('Tu as été aperçu.');return}}}
+  function alertState(msg){clearInterval(alertTimer);let left=12;function tick(){const s=document.getElementById('bfStatus');if(s)s.innerHTML='<span style="color:#fca5a5">🚨 '+esc2(msg)+' · <b>'+left+' s</b></span>';if(left<=0){clearInterval(alertTimer);burgFreeEscape('Tu n’as pas réussi à rester sur place.');}}tick();alertTimer=setInterval(()=>{left--;tick()},1000);updateAlertButtons()}
+  function updateAlertButtons(){const box=document.getElementById('bfInteract');if(!box)return;box.innerHTML='<button onclick="burgFreeEscape(\'Tu prends la fuite.\')">🏃 FUIR</button>'+(weapon(me())?'<button class="danger" onclick="burgFreeAttack()">⚠️ ATTAQUER</button>':'')}
+  function npcStep(n,dt){if(G.police)return;let target=n.target;if(!target){const room=n.routine[n.ri%n.routine.length];target=centerRoom(room,G.layout);n.target=target}const d=Math.hypot(target.x-n.x,target.y-n.y);if(d<5){n.wait=(n.wait||0)+dt;if(n.wait>rnd(2,5)){n.ri++;n.wait=0;n.target=null}return}n.x+=(target.x-n.x)/d*n.speed*dt;n.y+=(target.y-n.y)/d*n.speed*dt}
+  function loop(ts){if(!G)return;const dt=Math.min(.05,(ts-last||16)/1000);last=ts;move(joy.x,joy.y,dt);G.npcs.forEach(n=>npcStep(n,dt));if(G.noise>0)G.noise=Math.max(0,G.noise-dt*20);detect();draw();updateActions();updateStatus();raf=requestAnimationFrame(loop)}
+  function startLoop(){cancelAnimationFrame(raf);last=performance.now();raf=requestAnimationFrame(loop);setupJoy()}
+  function setupJoy(){const j=document.getElementById('bfJoy'),s=document.getElementById('bfStick');if(!j||!s)return;const reset=()=>{joy.on=false;joy.x=0;joy.y=0;s.style.left='31px';s.style.top='31px'};const set=e=>{const r=j.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;const px=(e.touches?e.touches[0].clientX:e.clientX)-cx,py=(e.touches?e.touches[0].clientY:e.clientY)-cy;const m=Math.min(38,Math.hypot(px,py));const a=Math.atan2(py,px);joy.x=Math.cos(a)*(m/38);joy.y=Math.sin(a)*(m/38);s.style.left=(31+joy.x*30)+'px';s.style.top=(31+joy.y*30)+'px'};j.onpointerdown=e=>{joy.on=true;j.setPointerCapture(e.pointerId);set(e)};j.onpointermove=e=>{if(joy.on)set(e)};j.onpointerup=reset;j.onpointercancel=reset}
+  window.burgFreeHide=function(){if(!G)return;const f=nearest();if(!f||!f.hide)return;G.player.hidden=true;G.player.hideId=f.id;G.status='Tu es caché dans '+f.name+'.';noise(0);draw();updateActions();}
+  window.burgFreeUnhide=function(){if(!G)return;G.player.hidden=false;G.player.hideId=null;G.status='Tu sors de ta cachette.';draw();updateActions();}
+  window.burgFreeLoot=function(){if(!G||G.player.hidden)return;const f=nearest();if(!f||!f.loot||f.used)return;f.used=true;const p=me();const name=pick(LOOT),cash=Math.floor(rnd(30,260));if(Math.random()<.35){addLoot(p,name);G.status='Objet volé : '+name+'.'}else{p.argent=(p.argent||0)+cash;G.status='Tu récupères '+cash+'$. ';try{if(typeof logTx==='function')logTx(p,'Butin · cambriolage',cash)}catch(e){}}G.looted++;addHeat(p,2);noise(20);try{save()}catch(e){}draw();updateActions();}
+  window.burgFreeAttack=function(){if(!G||!G.detected)return;if(!weapon(me())){burgFreeEscape('Tu n’as pas d’arme.');return}clearInterval(alertTimer);alertTimer=null;G.detected=false;G.npcs=[];G.status='Tu as utilisé ton arme et peux continuer, mais la chaleur augmente fortement.';addHeat(me(),35);try{save()}catch(e){}draw();updateActions();}
+  window.burgFreeEscape=function(msg){clearInterval(alertTimer);alertTimer=null;cancelAnimationFrame(raf);const p=me();if(p){if(G&&G.looted){const b=p.burg||{};b.wins=(b.wins||0)+1;b.loot=(b.loot||0)+G.looted;p.burg=b}addHeat(p,G&&G.detected?10:2);try{save()}catch(e){}}G=null;scarOv('<div class="burgModal" style="padding:16px"><h3>🏃 Cambriolage terminé</h3><p>'+esc2(msg||'Tu quittes la maison.')+'</p><button class="ok" onclick="scarClose();render()">Retour à la carte</button></div>')}
+  window.burgMapClick=function(pct){const r=regionAt2(pct);if(r)open(r);return !!r}
+  const oldDraw=window.drawMapPin;window.drawMapPin=function(){try{if(oldDraw)oldDraw();setTimeout(()=>{const md=document.getElementById('mapDots');if(!md||typeof REGIONS==='undefined')return;md.querySelectorAll('.burgMapBtn').forEach(e=>e.remove());REGIONS.forEach(r=>{const b=document.createElement('button');b.className='burgMapBtn';b.style.left=r.x+'%';b.style.top=r.y+'%';b.textContent='🏠';b.title='Cambrioler une maison';b.onclick=e=>{e.stopPropagation();open(r)};md.appendChild(b)})},0)}catch(e){}}
+  setTimeout(()=>{try{window.drawMapPin&&window.drawMapPin()}catch(e){}},500);
+})();
+</script>
 </html>
 <style>
 /* V20 : l'interface Scarlett reste accessible au-dessus de la vidéo */
@@ -7320,8 +7921,8 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
 </style>
 
 
-<style id="scarlett-v21-room-videos">
-/* V21 : loops vidéo indépendantes dans la chambre de Scarlett */
+<style id="scarlett-v22-room-videos">
+/* V22 : cadrage complet des vidéos + progression secrète restaurée */
 .scRoomVideoModal {
   width:min(92vw,760px);
   max-height:92vh;
@@ -7336,17 +7937,23 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
 .scRoomVideoFrame {
   position:relative;
   width:100%;
-  aspect-ratio:16/10;
   background:#000;
   overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:0;
 }
 .scRoomVideoFrame video {
   position:absolute;
   inset:0;
-  width:100%;
-  height:100%;
-  object-fit:cover;
+  width:auto;
+  height:auto;
+  max-width:100%;
+  max-height:70vh;
+  object-fit:contain;
   display:block;
+  margin:0 auto;
 }
 .scRoomVideoActions {
   padding:10px;
@@ -7368,7 +7975,8 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
 }
 @media (max-width:520px){
   .scRoomVideoModal{width:94vw;border-radius:18px}
-  .scRoomVideoFrame{aspect-ratio:1/1}
+  .scRoomVideoFrame{min-height:0}
+  .scRoomVideoFrame video{max-height:68vh}
 }
 </style>
 <script>
