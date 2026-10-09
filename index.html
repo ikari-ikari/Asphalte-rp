@@ -8419,3 +8419,176 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
   setTimeout(()=>{try{window.drawMapPin&&window.drawMapPin()}catch(e){}},700);
 })();
 </script>
+<style id="asphalte-v29-fixes">
+/* V29 — chambre centrée + maisons top-down détaillées + carte hiérarchique */
+.scRoomVideoFrame,.scBedVideoFrame{display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;width:100%!important;background:#000!important;overflow:hidden!important;min-height:0!important;aspect-ratio:auto!important}
+.scRoomVideoStage,.scBedVideoStage{position:relative;display:inline-block;max-width:100%;max-height:72vh;line-height:0;margin:auto}
+.scRoomVideoStage video,.scBedVideoStage video{position:relative!important;inset:auto!important;display:block!important;width:auto!important;height:auto!important;max-width:100%!important;max-height:72vh!important;object-fit:contain!important;margin:0!important;background:#000!important}
+.scRoomHotspot{position:absolute!important;z-index:12!important;border:0!important;background:transparent!important;color:transparent!important;box-shadow:none!important;margin:0!important;padding:0!important;cursor:pointer!important}
+.scRoomHotspot.scar{left:43%!important;top:16%!important;width:34%!important;height:58%!important}
+.scRoomHotspot.bed{left:25%!important;bottom:3%!important;width:58%!important;height:42%!important}
+.scRoomHint{font-size:.78rem;text-align:center;padding:8px 12px;background:#0b1020;color:#cbd5e1}
+/* Les anciens marqueurs énormes ne sont plus utilisés. */
+.burgMapBtn,.v26MapHouse,.v26RegionHint{display:none!important}
+.v29RegionHouse{position:absolute!important;z-index:15!important;transform:translate(-50%,-50%)!important;width:22px!important;height:22px!important;min-width:22px!important;padding:0!important;margin:0!important;border-radius:50%!important;background:#111827e8!important;border:1px solid #fff8!important;box-shadow:0 2px 7px #0009!important;color:#fff!important;font-size:12px!important;line-height:20px!important}
+.v29RegionHouse small{display:block;position:absolute;top:21px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:7px!important;color:#fff!important;text-shadow:0 1px 3px #000!important;pointer-events:none}
+.v29MapHint{position:absolute;z-index:14;left:50%;bottom:8px;transform:translateX(-50%);background:#0b1220e8;color:#fff;border:1px solid #ffffff33;border-radius:12px;padding:5px 9px;font-size:.65rem;white-space:nowrap;pointer-events:none}
+.bv29Modal{width:min(97vw,980px);background:#070b10;color:#fff;border-radius:22px;overflow:hidden;box-shadow:0 24px 90px #000d}
+.bv29Head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;background:#0d1723;border-bottom:1px solid #29384a}
+.bv29Head b{font-size:.92rem}.bv29Head button{margin:0;background:#172436;color:#fff;border-color:#64748b}
+.bv29Wrap{position:relative;background:#080c12;touch-action:none}
+.bv29Canvas{display:block;width:100%;height:auto;aspect-ratio:16/10;touch-action:none;background:#0b0e12}
+.bv29Hint{position:absolute;left:12px;right:12px;top:9px;z-index:5;color:#fff;font-size:.67rem;text-shadow:0 2px 5px #000;pointer-events:none;text-align:center}
+.bv29Joy{position:absolute;left:14px;bottom:14px;width:104px;height:104px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff55;touch-action:none;z-index:8}
+.bv29Stick{position:absolute;left:28px;top:28px;width:48px;height:48px;border-radius:50%;background:#ffffff55;border:1px solid #fff9}
+.bv29Actions{position:absolute;right:12px;bottom:12px;z-index:9;display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.bv29Actions button{margin:0;min-width:138px;background:#172536!important;color:#fff!important;border:1px solid #64748b!important;box-shadow:0 4px 14px #0009!important}
+.bv29Actions .hide{background:#14532d!important;border-color:#22c55e!important}.bv29Actions .loot{background:#713f12!important;border-color:#f59e0b!important}.bv29Actions .danger{background:#641b1b!important;border-color:#ef4444!important}
+.bv29Status{padding:8px 11px;background:#101b28;border-top:1px solid #29384a;font-size:.76rem;min-height:21px}
+.bv29Legend{padding:6px 10px;background:#09131e;color:#94a3b8;font-size:.65rem}
+.bv29Alert{background:#421313;color:#fecaca;padding:8px;text-align:center;font-size:.8rem}.bv29Timer{font-weight:900;font-size:1.15rem}
+</style>
+<script id="asphalte-v29-fixes">
+(function(){
+  'use strict';
+  /* ---------- CHAMBRE SCARLETT ---------- */
+  const V29_AMBIENT={phoneDay:'videos/scarlett_room_phone_day.mp4',windowDay:'videos/scarlett_room_window_day.mp4',phoneNight:'videos/scarlett_room_phone_night.mp4'};
+  const V29_BED=['jeux/scarlett_bed_01.mp4','jeux/scarlett_bed_02.mp4'];
+  let v29RoomVideo=null,v29BedVideo=null;
+  function v29StopVideo(v){if(v){try{v.pause()}catch(e){}v.removeAttribute('src');try{v.load()}catch(e){}}}
+  function v29RoomReady(){try{const s=scarP&&scarP(),p=selected&&selected();return !!(s&&p&&R6(s)===5&&!scEmpty)}catch(e){return false}}
+  function v29OpenRoom(){
+    if(!v29RoomReady())return;
+    v29StopVideo(v29RoomVideo);v29RoomVideo=null;
+    const keys=Object.keys(V29_AMBIENT),k=keys[Math.floor(Math.random()*keys.length)];
+    scarOv('<div class="scRoomVideoModal"><div class="scRoomVideoFrame"><div class="scRoomVideoStage"><video id="v29RoomVideo" autoplay loop muted playsinline preload="auto"></video><button class="scRoomHotspot scar" aria-label="Parler à Scarlett" onclick="v29RoomTalk()"></button><button class="scRoomHotspot bed" aria-label="Interagir avec le lit" onclick="v29Bed()"></button></div></div><div class="scRoomHint">Scarlett vit sa vie tranquillement. Clique sur Scarlett pour lui parler ou sur le lit pour interagir.</div><div class="scRoomVideoActions"><button onclick="v29RoomClose()">Sortir de la chambre</button></div></div>');
+    v29RoomVideo=document.getElementById('v29RoomVideo');
+    if(v29RoomVideo){v29RoomVideo.src=V29_AMBIENT[k];v29RoomVideo.loop=true;v29RoomVideo.muted=true;v29RoomVideo.playsInline=true;v29RoomVideo.autoplay=true;v29RoomVideo.play().catch(()=>{})}
+  }
+  window.v29RoomClose=function(){v29StopVideo(v29RoomVideo);v29RoomVideo=null;try{scarClose()}catch(e){}};
+  window.v29RoomTalk=function(){
+    if(!v29RoomReady())return;
+    const pool=(state.players||[]).filter(p=>p&&p.scar&&Array.isArray(p.scar.purchases)&&p.scar.purchases.length&&(p.scar.spent||0)>0);
+    const me=selected&&selected(),others=pool.filter(p=>!me||p.id!==me.id),list=others.length?others:pool;
+    function report(){
+      if(!list.length)return '« Pour l’instant, je ne me souviens d’aucun client avec assez d’achats. »';
+      const p=list[Math.floor(Math.random()*list.length)],rows={};(p.scar.purchases||[]).forEach(x=>{const n=x.item||'Article';rows[n]=(rows[n]||0)+(x.qty||1)});
+      const items=Object.entries(rows).map(([n,q])=>q+'× '+n).join(', ');
+      return '« Oui… <b>'+escH(p.nomRp||'un client')+'</b> est passé. Il a dépensé <b>'+(p.scar.spent||0)+'$</b> et a acheté : <b>'+escH(items)+'</b>. »';
+    }
+    scarClose();
+    scarOv('<div class="scRoomTalk"><div class="rtK">Scarlett · souvenirs de la boutique</div><div class="rtTxt">« Tu voulais savoir quels <b>clients</b> sont venus acheter chez moi ? »</div><div class="rtBtns"><button class="ok" onclick="v29CustomerReport()">Oui, raconte-moi.</button><button onclick="v29OpenRoom()">Retour</button></div></div>');
+    window.v29CustomerReport=function(){scarOv('<div class="scRoomTalk"><div class="rtK">Un client dont elle se souvient</div><div class="rtTxt">'+report()+'</div><div class="rtBtns"><button class="ok" onclick="v29CustomerReport()">Un autre client</button><button onclick="v29OpenRoom()">Retour</button></div></div>')};
+  };
+  window.v29Bed=function(){
+    const s=scarP&&scarP(),p=selected&&selected();if(!s||!p||R6(s)!==5)return;
+    if(!scMale()){scarClose();scarOv('<div class="scRoomTalk"><div class="rtK">Scarlett</div><div class="rtTxt">« Le lit ? Avec toi, je préfère discuter. »</div><div class="rtBtns"><button onclick="v29OpenRoom()">Retour</button></div></div>');return}
+    if(countCondo(p)<1){scarClose();scarOv('<div class="scRoomTalk"><div class="rtK">Scarlett</div><div class="rtTxt">« Attends… il nous faut un préservatif avant de continuer. »</div><div class="rtBtns"><button onclick="v29OpenRoom()">Retour</button></div></div>');return}
+    v29StopVideo(v29RoomVideo);v29RoomVideo=null;scarClose();
+    const src=V29_BED[Math.floor(Math.random()*V29_BED.length)];
+    scarOv('<div class="scBedVideoModal"><div class="scBedVideoFrame"><div class="scBedVideoStage"><video id="v29BedVideo" autoplay muted playsinline preload="auto"></video></div></div><div class="scBedVideoBar"><button onclick="v29BedClose()">Retour</button></div></div>');
+    v29BedVideo=document.getElementById('v29BedVideo');
+    if(v29BedVideo){v29BedVideo.src=src;v29BedVideo.autoplay=true;v29BedVideo.muted=true;v29BedVideo.playsInline=true;v29BedVideo.onended=function(){const lost=scCondoLose(p);try{scarSave()}catch(e){}v29BedVideo=null;scarClose();v29OpenRoom();if(lost&&typeof miniToast==='function')miniToast('−1 préservatif');};v29BedVideo.play().catch(()=>{})}
+  };
+  window.v29BedClose=function(){v29StopVideo(v29BedVideo);v29BedVideo=null;try{scarClose()}catch(e){}v29OpenRoom()};
+  window.v26RoomOpen=v29OpenRoom;window.v26RoomClose=v29RoomClose;window.v26RoomTalk=v29RoomTalk;window.v26Bed=v29Bed;window.scarRoomOpenAmbient=v29OpenRoom;window.scarRoomBed=v29Bed;
+  window.v29OpenRoom=v29OpenRoom;
+  /* Replace the room button so the old room code cannot hide the working version. */
+  function refreshRoomButton(){try{const sc=document.querySelector('#p-shop .scene'),s=scarP&&scarP(),p=selected&&selected();if(!sc||!s||!p)return;let b=document.getElementById('scRoomBox');if(R6(s)!==5||scEmpty){if(b)b.remove();return}if(!b){b=document.createElement('div');b.id='scRoomBox';b.className='scRoom';const rp=document.getElementById('scReply');(rp?rp.parentNode:sc).insertBefore(b,rp?rp.nextSibling:null)}b.innerHTML='<button class="ok" onclick="v29OpenRoom()">🚪 Entrer dans la chambre de Scarlett</button><small>La chambre est accessible après la mission secrète.</small>'}catch(e){}}
+  window.scRoomUI=refreshRoomButton;
+  const oldPaintV29=window.scarPaint; if(oldPaintV29&&!oldPaintV29.__v29){window.scarPaint=function(){const r=oldPaintV29.apply(this,arguments);try{refreshRoomButton()}catch(e){}return r};window.scarPaint.__v29=true}
+
+  /* ---------- CAMBRIOLAGE V29 ---------- */
+  const A='jeux/assets_v29/';
+  const SETS={
+    cozy:{salon:[A+'ref17789_salon.jpg',A+'ref17790_salon.jpg'],chambre:[A+'ref17789_chambre.jpg',A+'ref17790_chambre.jpg'],cuisine:[A+'ref17789_cuisine.jpg',A+'ref17790_cuisine.jpg'],sdb:[A+'ref17789_sdb.jpg',A+'ref17790_sdb.jpg'],bureau:[A+'ref17789_bureau.jpg',A+'ref17790_bureau.jpg']},
+    luxe:{salon:[A+'ref17790_salon.jpg'],chambre:[A+'ref17790_chambre.jpg'],cuisine:[A+'ref17790_cuisine.jpg'],sdb:[A+'ref17790_sdb.jpg'],bureau:[A+'ref17790_bureau.jpg']},
+    hobby:{salon:[A+'ref17789_salon.jpg'],chambre:[A+'ref17789_chambre.jpg'],cuisine:[A+'ref17791_cuisine.jpg'],sdb:[A+'ref17791_sdb.jpg'],bureau:[A+'ref17791_bibliotheque.jpg']}
+  };
+  const LOOT=[['Argent liquide',50,320],['Montre de collection',90,260],['Téléphone haut de gamme',120,380],['Appareil photo',140,420],['Console de jeu',130,420],['Ordinateur portable',220,650],['Bijou',180,520],['Parfum de collection',60,180],['Carte rare',120,500],['Petit lingot',350,900],['Console rétro',100,300],['Casque audio',70,190],['Objet d’art',180,700],['Sac de créateur',160,480],['Livre rare',80,260],['Montre ancienne',140,440]];
+  const ROUTES={salon:['salon','cuisine','bureau','chambre','salon'],chambre:['chambre','sdb','salon','bureau','chambre'],bureau:['bureau','salon','cuisine','bureau'],cuisine:['cuisine','salon','sdb','chambre','cuisine'],sdb:['sdb','chambre','salon','sdb']};
+  const NAMES=['Alex','Maya','Léo','Nina','Sam','Inès','Noah','Emma','Lucas','Zoé'];
+  let B=null,braf=0,blast=0,bjoy={x:0,y:0,on:false},bTimer=null,bImgs={};
+  const pick=a=>a[Math.floor(Math.random()*a.length)],rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const me=()=>typeof selected==='function'?selected():null;
+  const weapon=p=>!!(p&&((p.items||[]).some(i=>typeof isGunName==='function'&&isGunName(i.name))));
+  function load(src){if(bImgs[src])return bImgs[src];const im=new Image();im.src=src;bImgs[src]=im;return im}
+  function addLoot(p,name){p.items=p.items||[];p.items.push({id:typeof uid==='function'?uid():('burg'+Date.now()+Math.random()),name,qty:1,note:'Butin · cambriolage',slots:1,bag:'tech',stolen:true});}
+  function heat(n){const p=me();if(p){p.heat=clamp((p.heat||0)+n,0,100);try{save()}catch(e){}}}
+  function chooseLayout(){
+    const L=[
+      {salon:{x:20,y:25,w:310,h:205},cuisine:{x:340,y:25,w:250,h:205},bureau:{x:600,y:25,w:250,h:205},chambre:{x:20,y:240,w:310,h:295},sdb:{x:340,y:240,w:250,h:295},entree:{x:600,y:240,w:250,h:295}},
+      {salon:{x:20,y:25,w:360,h:215},chambre:{x:390,y:25,w:300,h:215},sdb:{x:700,y:25,w:150,h:215},cuisine:{x:20,y:250,w:290,h:285},bureau:{x:320,y:250,w:330,h:285},entree:{x:660,y:250,w:190,h:285}},
+      {cuisine:{x:20,y:25,w:280,h:200},salon:{x:310,y:25,w:300,h:200},bureau:{x:620,y:25,w:230,h:200},chambre:{x:20,y:235,w:320,h:300},sdb:{x:350,y:235,w:220,h:300},entree:{x:580,y:235,w:270,h:300}}
+    ];return pick(L);
+  }
+  function center(r){return{x:r.x+r.w/2,y:r.y+r.h/2}}
+  function roomFor(x,y){if(!B)return null;for(const k of Object.keys(B.layout)){const r=B.layout[k];if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return k}return null}
+  function door(a,b){const ra=B.layout[a],rb=B.layout[b];if(!ra||!rb)return null;if(Math.abs(ra.x+ra.w-rb.x)<6||Math.abs(rb.x+rb.w-ra.x)<6){const x=Math.abs(ra.x+ra.w-rb.x)<6?rb.x-3:ra.x-3;const y=Math.max(ra.y,rb.y)+Math.min(ra.h,rb.h)/2;return{x,y,w:10,h:58}}if(Math.abs(ra.y+ra.h-rb.y)<6||Math.abs(rb.y+rb.h-ra.y)<6){const y=Math.abs(ra.y+ra.h-rb.y)<6?rb.y-3:ra.y-3;const x=Math.max(ra.x,rb.x)+Math.min(ra.w,rb.w)/2;return{x,y,w:58,h:10}}return null}
+  function isDoorPoint(x,y){for(let i=0;i<B.rooms.length;i++)for(let j=i+1;j<B.rooms.length;j++){const d=door(B.rooms[i],B.rooms[j]);if(d&&x>=d.x-14&&x<=d.x+d.w+14&&y>=d.y-14&&y<=d.y+d.h+14)return true}return false}
+  function furnitureFor(room,r,set){
+    const f=[];const add=(name,kind,rx,ry,w,h,hide=false,loot=false)=>f.push({name,kind,x:r.x+r.w*rx,y:r.y+r.h*ry,w,h,hide,loot,used:false,room});
+    if(room==='salon'){add('Canapé','sofa',.28,.28,150,55,true);add('Table basse','table',.48,.55,82,46,false,Math.random()<.25);add('Meuble TV','tv',.50,.88,110,32,false,Math.random()<.45);if(Math.random()<.5)add('Commode','drawer',.82,.28,44,75,false,Math.random()<.55);}
+    if(room==='chambre'){add('Lit','bed',.43,.50,150,92,true,Math.random()<.55);add('Placard','wardrobe',.82,.32,58,100,true,Math.random()<.75);add('Table de chevet','nightstand',.18,.50,38,48,false,Math.random()<.4);}
+    if(room==='cuisine'){add('Îlot','island',.55,.64,150,55,false);add('Placards','cabinet',.48,.17,185,36,false,Math.random()<.8);add('Frigo','fridge',.88,.48,45,100,false,Math.random()<.55);add('Tiroirs','drawer',.18,.2,70,35,false,Math.random()<.45);}
+    if(room==='bureau'){add('Bureau','desk',.52,.55,140,58,true,Math.random()<.8);add('Bibliothèque','shelf',.18,.25,52,115,true,Math.random()<.55);add('Classeur','drawer',.83,.30,45,85,false,Math.random()<.7);add('Coffre','safe',.16,.78,45,40,false,Math.random()<.75);}
+    if(room==='sdb'){add('Douche','shower',.22,.28,65,70,false);add('Baignoire','bath',.65,.28,115,50,true);add('Meuble lavabo','vanity',.55,.76,95,42,false,Math.random()<.25);}
+    if(room==='entree'){add('Porte-manteau','coat',.2,.45,45,75,true);add('Console','console',.6,.58,95,42,false,Math.random()<.5);add('Petit placard','closet',.82,.4,55,100,true,Math.random()<.55);}
+    return f;
+  }
+  function make(){
+    const set=pick(Object.keys(SETS)),layout=chooseLayout(),rooms=Object.keys(layout),imgs={};
+    rooms.forEach(r=>{if(SETS[set][r])imgs[r]=load(pick(SETS[set][r]))});
+    const furniture=rooms.flatMap(r=>furnitureFor(r,layout[r],set));
+    const loot=[];for(const f of furniture)if(f.loot){const q=pick(LOOT);loot.push({f,name:q[0],min:q[1],max:q[2]})}
+    const npcs=[];const count=Math.random()<.45?1:(Math.random()<.75?2:3);for(let i=0;i<count;i++){const start=pick(rooms.filter(r=>r!=='entree')),c=center(layout[start]);npcs.push({id:i,name:pick(NAMES),x:c.x+rnd(-30,30),y:c.y+rnd(-25,25),room:start,route:ROUTES[start]||rooms,state:'routine',ri:0,target:null,speed:rnd(35,48),fear:Math.random()<.28,wait:rnd(0,2),alerted:false})}
+    return {set,layout,rooms,imgs,furniture,npcs,loot,looted:[],player:{x:center(layout.entree).x,y:center(layout.entree).y,hidden:false,hideId:null},alarm:Math.random()<.4,detected:false,police:false,status:'Tu entres dans la maison.',noise:0,houseName:pick(['Maison du Parc','Villa des Lilas','Maison du Canal','Résidence Horizon','Maison des Roses','Pavillon Bleu'])};
+  }
+  function blockedFurniture(x,y){for(const f of B.furniture){const hard=['sofa','table','bed','wardrobe','island','desk','shelf','bath','cabinet','drawer','safe','vanity','fridge','console','closet','nightstand','coat'];if(hard.includes(f.kind)&&x>f.x-f.w/2-9&&x<f.x+f.w/2+9&&y>f.y-f.h/2-9&&y<f.y+f.h/2+9)return true}return false}
+  function collision(x,y,from){const rn=roomFor(x,y);if(!rn)return true;if(from&&rn!==from&&!isDoorPoint(x,y))return true;if(blockedFurniture(x,y))return true;return false}
+  function move(dx,dy,dt){if(!B||B.detected||B.player.hidden)return;const sp=145,from=roomFor(B.player.x,B.player.y);let nx=B.player.x+dx*sp*dt,ny=B.player.y+dy*sp*dt;if(!collision(nx,B.player.y,from))B.player.x=nx;if(!collision(B.player.x,ny,roomFor(B.player.x,B.player.y)))B.player.y=ny}
+  function nearFurniture(){let best=null,d=55;for(const f of B.furniture){const q=Math.hypot(B.player.x-f.x,B.player.y-f.y);if(q<d){best=f;d=q}}return best}
+  function noise(n){B.noise=Math.max(B.noise,n);for(const ncp of B.npcs){if(Math.hypot(ncp.x-B.player.x,ncp.y-B.player.y)<260){if(ncp.fear&&n>=38){B.police=true;alert('Un occupant paniqué appelle la police.');}else if(n>=22){ncp.target={x:B.player.x,y:B.player.y};ncp.state='investigate'}}}}
+  function alert(msg){if(B.detected)return;B.detected=true;heat(18);let left=12;clearInterval(bTimer);const tick=()=>{const s=document.getElementById('bv29Status');if(s)s.innerHTML='<span class="bv29Alert">🚨 '+msg+' <span class="bv29Timer">'+left+' s</span></span>';actions()};tick();bTimer=setInterval(()=>{left--;tick();if(left<=0){clearInterval(bTimer);bTimer=null}},1000)}
+  function npcStep(n,dt){if(B.police)return;let t=n.target;if(!t){const rn=n.route[n.ri%n.route.length],r=B.layout[rn];t={x:r.x+r.w/2+rnd(-50,50),y:r.y+r.h/2+rnd(-40,40)};n.target=t;n.room=rn}const d=Math.hypot(t.x-n.x,t.y-n.y);if(d<5){n.wait+=dt;if(n.wait>rnd(2.5,6)){n.ri++;n.target=null;n.wait=0;n.state='routine'}return}const vx=(t.x-n.x)/d*n.speed*dt,vy=(t.y-n.y)/d*n.speed*dt;const nx=n.x+vx,ny=n.y+vy;if(!blockedFurniture(nx,n.y))n.x=nx;if(!blockedFurniture(n.x,ny))n.y=ny;if(n.state==='investigate'&&Math.hypot(n.x-B.player.x,n.y-B.player.y)<85&&!B.player.hidden)alert(n.name+' t’a repéré.');}
+  function drawRoom(c,r,img){c.save();c.beginPath();c.rect(r.x,r.y,r.w,r.h);c.clip();c.fillStyle='#8b765d';c.fillRect(r.x,r.y,r.w,r.h);if(img&&img.complete)c.drawImage(img,r.x,r.y,r.w,r.h);c.restore();c.strokeStyle='#261a14';c.lineWidth=8;c.strokeRect(r.x+3,r.y+3,r.w-6,r.h-6)}
+  function draw(){const c=document.getElementById('bv29Canvas');if(!c||!B)return;const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);x.fillStyle='#05080d';x.fillRect(0,0,c.width,c.height);B.rooms.forEach(r=>drawRoom(x,B.layout[r],B.imgs[r]));
+    // portes
+    for(let i=0;i<B.rooms.length;i++)for(let j=i+1;j<B.rooms.length;j++){const d=door(B.rooms[i],B.rooms[j]);if(d){x.fillStyle='#7a5033';x.fillRect(d.x,d.y,d.w,d.h);x.fillStyle='#d9b27a';x.fillRect(d.x+3,d.y+3,d.w-6,d.h-6)}}
+    // repères discrets seulement pendant l'approche
+    const f=nearFurniture();if(f){x.save();x.strokeStyle=f.hide?'#22c55e99':'#f59e0b99';x.lineWidth=2;x.setLineDash([5,4]);x.strokeRect(f.x-f.w/2-4,f.y-f.h/2-4,f.w+8,f.h+8);x.restore()}
+    // PNJ stylisés, sans traverser les meubles
+    for(const n of B.npcs){x.save();x.translate(n.x,n.y);x.fillStyle=n.fear?'#f59e0b':'#e85d75';x.beginPath();x.arc(0,-6,7,0,Math.PI*2);x.fill();x.fillStyle='#334155';x.fillRect(-7,2,14,17);x.fillStyle='#fff';x.font='8px sans-serif';x.textAlign='center';x.fillText(n.name,0,-17);x.restore()}
+    const p=B.player;x.save();x.translate(p.x,p.y);x.fillStyle=p.hidden?'#22c55e':'#38bdf8';x.beginPath();x.arc(0,-6,7,0,Math.PI*2);x.fill();x.fillStyle='#2563eb';x.fillRect(-7,2,14,17);x.fillStyle='#fff';x.font='8px sans-serif';x.textAlign='center';x.fillText(p.hidden?'CACHÉ':'TOI',0,-17);x.restore();
+  }
+  function actions(){const box=document.getElementById('bv29Actions');if(!box||!B)return;let h='';if(B.detected){h+='<button class="danger" onclick="v29Flee()">🏃 FUIR</button>';if(weapon(me()))h+='<button class="danger" onclick="v29Attack()">⚠️ ATTAQUER</button>'}else if(B.player.hidden){h='<button class="hide" onclick="v29Unhide()">SORTIR DE LA CACHE</button>'}else{const f=nearFurniture();if(f){if(f.hide)h+='<button class="hide" onclick="v29Hide()">CACHER</button>';if(f.loot&&!f.used)h+='<button class="loot" onclick="v29Loot()">VOLER OBJETS</button>'}}box.innerHTML=h}
+  function status(){const s=document.getElementById('bv29Status');if(!s||!B)return;let t=B.status;const f=nearFurniture();if(f&&!B.player.hidden)t+=' · '+f.name;if(B.alarm)t+=' · alarme possible';if(B.npcs.length)t+=' · '+B.npcs.length+' occupant(s)';s.textContent=t}
+  function setupJoy(){const j=document.getElementById('bv29Joy'),s=document.getElementById('bv29Stick');if(!j||!s)return;const reset=()=>{bjoy.on=false;bjoy.x=bjoy.y=0;s.style.left='28px';s.style.top='28px'};const set=e=>{const r=j.getBoundingClientRect(),px=e.clientX-r.left-r.width/2,py=e.clientY-r.top-r.height/2,m=Math.min(38,Math.hypot(px,py)),a=Math.atan2(py,px);bjoy.x=Math.cos(a)*m/38;bjoy.y=Math.sin(a)*m/38;s.style.left=(28+bjoy.x*28)+'px';s.style.top=(28+bjoy.y*28)+'px'};j.onpointerdown=e=>{bjoy.on=true;j.setPointerCapture(e.pointerId);set(e)};j.onpointermove=e=>{if(bjoy.on)set(e)};j.onpointerup=reset;j.onpointercancel=reset;reset()}
+  function render(){scarOv('<div class="bv29Modal"><div class="bv29Head"><b>🏠 '+B.houseName+' · '+(B.region||'Région')+'</b><button onclick="v29Leave()">Quitter</button></div><div class="bv29Wrap"><canvas id="bv29Canvas" class="bv29Canvas" width="900" height="560"></canvas><div class="bv29Hint">Joystick = déplacement libre · approche-toi d’un meuble pour voir CACHER / VOLER OBJETS</div><div id="bv29Joy" class="bv29Joy"><div id="bv29Stick" class="bv29Stick"></div></div><div id="bv29Actions" class="bv29Actions"></div></div><div id="bv29Status" class="bv29Status"></div><div class="bv29Legend">🟦 toi · 👤 occupants · 🟩 cachette · 🟨 objets · portes et murs bloquants</div></div>');draw();actions();status();setupJoy()}
+  function loop(ts){if(!B)return;const dt=Math.min(.05,(ts-(blast||ts-16))/1000);blast=ts;move(bjoy.x,bjoy.y,dt);B.npcs.forEach(n=>npcStep(n,dt));if(B.noise>0)B.noise=Math.max(0,B.noise-dt*20);draw();actions();status();braf=requestAnimationFrame(loop)}
+  function open(r){const p=me();if(!p)return;cancelAnimationFrame(braf);clearInterval(bTimer);B=make();B.region=r&&r.nom||'Région';render();blast=performance.now();braf=requestAnimationFrame(loop)}
+  window.v29Open=open;
+  window.v29Hide=function(){if(!B||B.detected)return;const f=nearFurniture();if(!f||!f.hide)return;B.player.hidden=true;B.player.hideId=f;B.status='Tu te caches dans '+f.name+'.';draw();actions()};
+  window.v29Unhide=function(){if(!B)return;B.player.hidden=false;B.player.hideId=null;B.status='Tu sors de ta cachette.';draw();actions()};
+  window.v29Loot=function(){if(!B||B.detected||B.player.hidden)return;const f=nearFurniture();if(!f||!f.loot||f.used)return;f.used=true;const q=B.loot.find(x=>x.f===f);if(!q){B.status='Ce meuble ne contient rien de récupérable.';return}const p=me();if(q.name==='Argent liquide'){const cash=Math.floor(rnd(q.min,q.max));p.argent=(p.argent||0)+cash;B.status='Tu récupères '+cash+'$.';try{logTx(p,'Butin · cambriolage',cash)}catch(e){}}else{addLoot(p,q.name);B.status='Objet volé : '+q.name+'.'}heat(2);B.noise=28;try{save()}catch(e){}draw();actions();status()};
+  window.v29Flee=function(){clearInterval(bTimer);bTimer=null;heat(B&&B.detected?10:2);v29Leave()};
+  window.v29Attack=function(){if(!B||!B.detected||!weapon(me()))return;clearInterval(bTimer);bTimer=null;B.detected=false;B.police=false;B.npcs=[];B.status='Tu affrontes les occupants. La chaleur augmente fortement.';heat(35);draw();actions();status()};
+  window.v29Leave=function(){clearInterval(bTimer);bTimer=null;cancelAnimationFrame(braf);B=null;try{scarClose()}catch(e){}};
+  /* ---------- CARTE : régions d'abord, maisons seulement après zoom ---------- */
+  function housesOnMap(){
+    const md=document.getElementById('mapDots');if(!md||typeof REGIONS==='undefined')return;
+    md.querySelectorAll('.v29RegionHouse,.v29MapHint').forEach(e=>e.remove());
+    const zoom=typeof mapView==='object'&&mapView?Number(mapView.s||1):1;
+    const sel=typeof selTerr!=='undefined'?selTerr:null;
+    if(!sel||zoom<1.85)return;
+    const r=typeof TRR==='function'?TRR(sel):REGIONS.find(x=>x.id===sel);if(!r)return;
+    const offsets=[[-1.1,-.8],[.9,-.7],[-.7,.8],[1.1,.7]];const n=2+Math.floor(Math.random()*3);
+    offsets.slice(0,n).forEach((o,i)=>{const b=document.createElement('button');b.className='v29RegionHouse';b.style.left=(r.x+o[0])+'%';b.style.top=(r.y+o[1])+'%';b.innerHTML='⌂<small>Maison '+(i+1)+'</small>';b.title='Cambrioler cette maison';b.onclick=e=>{e.stopPropagation();v29Open(r)};md.appendChild(b)});
+    const h=document.createElement('div');h.className='v29MapHint';h.textContent='Maisons disponibles dans '+r.nom+' · touche une maison pour repérer les lieux';md.appendChild(h);
+  }
+  const oldMapDraw=window.drawMapPin;
+  window.drawMapPin=function(){try{if(oldMapDraw)oldMapDraw()}catch(e){}try{housesOnMap()}catch(e){}};
+  setInterval(()=>{try{housesOnMap()}catch(e){}},700);
+  setTimeout(()=>{try{housesOnMap()}catch(e){}},500);
+})();
+</script>
