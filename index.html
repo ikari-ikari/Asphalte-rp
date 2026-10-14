@@ -700,7 +700,7 @@ body.th-glass .dock{background:#ffffff1f;border-top:1px solid #ffffff40;backdrop
 #mapExit{display:none;position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:999px;padding:14px 26px;font-size:1rem;font-weight:700;box-shadow:0 6px 20px #0008;margin:0}
 #mapViewport.mapFs #mapExit{display:block}
 </style>
-<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f172a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f172a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Asphalte"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
 </head>
 <body>
 <div class="phone">
@@ -6696,7 +6696,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){NT.n=0;tr
 function ntRows(){const pm=ntOK()?Notification.permission:"unsupported",std=window.matchMedia&&matchMedia("(display-mode: standalone)").matches;
 return`<div class="optRow" style="display:block"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>🔔 Alertes (SMS, piratages, missions)</span><button class="tg ${pm==="granted"?"on":""}" ${pm==="denied"||pm==="unsupported"?"disabled":""} onclick="ntAsk()">${pm==="granted"?"Activées":pm==="denied"?"Bloquées":pm==="unsupported"?"Indispo":"Activer"}</button></div>`+
 (pm==="granted"?'<button style="margin-top:8px" onclick="ntTest()">Tester une alerte</button>':"")+
-(std?'<p class="mut">✅ App installée.</p>':window._ip?'<button class="ok" style="margin-top:8px" onclick="ntInstall()">📲 Installer sur l\'écran d\'accueil</button>':'<p class="mut">Pour l\'installer : menu du navigateur → « Ajouter à l\'écran d\'accueil » (iPhone : Partager → Sur l\'écran d\'accueil).</p>')+
+(std?'<p class="mut">✅ App installée.</p>':window._ip?'<button class="ok" style="margin-top:8px" onclick="ntInstall()">📲 Installer sur l\'écran d\'accueil</button>':(window.iosIs&&iosIs()?'<button class="ok" style="margin-top:8px" onclick="iosGuide()">📲 Installer sur iPhone (guide)</button>':'<p class="mut">Pour l\'installer : menu du navigateur → « Ajouter à l\'écran d\'accueil ».</p>'))+
 '<p class="mut">Les alertes arrivent tant que l\'app reste ouverte en arrière-plan.</p></div>'}
 const _optR7=optRender;optRender=function(){_optR7();const b=document.getElementById("optBox");if(b)b.insertAdjacentHTML("afterbegin",ntRows())};
 function ntWatch(){const p=(typeof mySlot==="function"?mySlot():null)||selected(),arb=state.mode==="arbitre",id=p&&p.id;if(NT.id!==id){NT.id=id;NT.seen=null}
@@ -6707,7 +6707,7 @@ fr.slice(0,3).forEach(n=>ntShow("Asphalte City RP",n.t.replace(/^J\d+ — /,""),
 if(sms.length>NT.sms)sms.slice(0,Math.min(2,sms.length-NT.sms)).forEach(x=>ntShow("📩 "+((state.players||[]).find(y=>y.id===x.from)||{}).nomRp||"Message",x.txt,"sms"+x.from));
 NT.sms=sms.length;if(hk&&hk!==NT.hack)ntShow("🚨 Piratage détecté","Quelqu'un s'attaque à ton téléphone.","hack");NT.hack=hk}
 const _rn7=render;render=function(){const r=_rn7.apply(this,arguments);try{qRender();ntWatch()}catch(e){}return r};
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>navigator.serviceWorker.register("sw-1.js")).catch(()=>{}));
 
 try{render()}catch(e){console.warn("render fin",e)}
 
@@ -7385,6 +7385,42 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
   };
 
   try{scEmpty=r6Ready(scarP()||{});scarPaint();scRoomUI()}catch(e){}
+})();
+</script>
+
+<style>
+#iosBn{position:fixed;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147483000;background:#0f172a;color:#fff;border:1px solid #38bdf8;border-radius:16px;padding:12px 14px;display:none;box-shadow:0 8px 30px #0009;font:600 .85rem -apple-system,sans-serif;max-width:410px;margin:auto}
+#iosBn .r{display:flex;gap:8px;margin-top:8px}#iosBn button,#iosGd button{border:0;border-radius:10px;padding:10px 12px;font:700 .85rem -apple-system,sans-serif}
+#iosGd{position:fixed;inset:0;z-index:2147483600;background:#000b;display:none;align-items:flex-end;justify-content:center}
+#iosGd .c{background:#fff;color:#1e293b;border-radius:20px 20px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));width:min(430px,100%);max-height:92vh;overflow:auto;font:.92rem/1.45 -apple-system,sans-serif}
+#iosGd h3{margin:0 0 8px}#iosGd ol{padding-left:0;list-style:none;margin:10px 0}#iosGd li{display:flex;gap:10px;align-items:center;margin:10px 0;background:#f1f5f9;border-radius:12px;padding:10px}
+#iosGd li b.n{flex:0 0 26px;height:26px;border-radius:50%;background:#0ea5e9;color:#fff;display:flex;align-items:center;justify-content:center}
+#iosGd .warn{background:#fef3c7;border:1px solid #f59e0b;border-radius:12px;padding:10px;margin:8px 0}
+</style>
+<script id="asphalte-ios-install">
+(function(){
+const ua=navigator.userAgent||"";
+const isIOS=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const std=()=>navigator.standalone===true||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);
+const inApp=/FBAN|FBAV|Instagram|Snapchat|TikTok|Discord|Line\/|MicroMessenger|Messenger|Twitter|GSA\//i.test(ua);
+const notSafari=/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo/i.test(ua);
+window.iosIs=()=>isIOS&&!std();
+const SH='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+function el(id,html){let e=document.getElementById(id);if(!e){e=document.createElement("div");e.id=id;document.body.appendChild(e)}if(html!=null)e.innerHTML=html;return e}
+window.iosGuide=function(){
+ const warn=inApp?'<div class="warn">⚠️ Tu es dans le navigateur d\'une autre app (Discord, Instagram, Snap…). <b>Ça ne marche pas d\'ici.</b> Copie le lien puis colle-le dans <b>Safari</b>.<br><button style="margin-top:8px;background:#0ea5e9;color:#fff" onclick="iosCopy()">📋 Copier le lien</button></div>'
+  :notSafari?'<div class="warn">ℹ️ Tu utilises un autre navigateur que Safari. Si tu ne vois pas « Sur l\'écran d\'accueil », ouvre le lien dans <b>Safari</b>.<br><button style="margin-top:8px;background:#0ea5e9;color:#fff" onclick="iosCopy()">📋 Copier le lien</button></div>':'';
+ const g=el("iosGd",'<div class="c"><h3>📲 Mettre Asphalte City RP sur ton iPhone</h3>'+warn+'<ol><li><b class="n">1</b><span>Ouvre ce site dans <b>Safari</b> (l\'icône boussole bleue).</span></li><li><b class="n">2</b><span>Appuie sur le bouton <b>Partager</b> '+SH+' (carré avec une flèche vers le haut, en bas ou en haut de l\'écran).</span></li><li><b class="n">3</b><span>Fais défiler le menu vers le bas et appuie sur <b>« Sur l\'écran d\'accueil »</b>. Si tu ne le vois pas : <b>Plus</b> / <b>Afficher plus</b>.</span></li><li><b class="n">4</b><span>Appuie sur <b>Ajouter</b> en haut à droite. L\'icône apparaît sur ton accueil ✅</span></li></ol><button style="width:100%;background:#0f172a;color:#fff" onclick="iosClose()">J\'ai compris</button></div>');
+ g.style.display="flex";g.onclick=e=>{if(e.target===g)iosClose()};
+};
+window.iosClose=function(){const g=document.getElementById("iosGd");if(g)g.style.display="none";const b=document.getElementById("iosBn");if(b)b.style.display="none";try{localStorage.setItem("iosBnDone","1")}catch(e){}};
+window.iosCopy=function(){const u=location.href.split("#")[0];const ok=()=>{try{miniToast("📋 Lien copié : colle-le dans Safari")}catch(e){alert("Lien copié")}};
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(u).then(ok,()=>prompt("Copie ce lien :",u));else prompt("Copie ce lien :",u)};
+function banner(){
+ try{if(localStorage.getItem("iosBnDone"))return}catch(e){}
+ const b=el("iosBn",'<div>📲 Installe l\'app sur ton iPhone pour jouer en plein écran et recevoir les alertes.</div><div class="r"><button style="background:#38bdf8;color:#04283a" onclick="iosGuide()">Comment faire ?</button><button style="background:#334155;color:#fff" onclick="iosClose()">Plus tard</button></div>');
+ b.style.display="block"}
+if(isIOS&&!std())window.addEventListener("load",()=>setTimeout(banner,2500));
 })();
 </script>
 </body>
@@ -8547,7 +8583,7 @@ try{(state.players||[]).forEach(scBadgePurge);render()}catch(e){}
 .v30Pin{position:absolute;display:block;width:13px;height:13px;transform:translate(-50%,-100%) scale(var(--hz,1));transform-origin:50% 100%;pointer-events:none;z-index:6;filter:drop-shadow(0 1px 1.5px #000b)}
 .v30Pin.off{opacity:.35;filter:grayscale(1)}
 </style>
-<script src="jeux/assets.js?v=6"></script><script src="jeux/persos.js?v=6"></script>
+<script src="jeux/assets.js?v=6"></script><script src="jeux/persos.js?v=8"></script>
 <script id="asphalte-v30-houses">
 (function(){
 'use strict';
@@ -9089,7 +9125,7 @@ function charFiles(cid){const out=[];const m=CHS&&CHS[cid];if(!m)return out;for(
 function drawAnim(x,cid,px,py,isP,e){
   const meta=CHS[cid],dir=charDirOf(e),dd=meta.dirs[dir]||meta.dirs.down,fr=dd.f;
   const moving=performance.now()-(e.mvAt||0)<170,down=!isP&&e.state==='down',ph=e.ph||0;
-  let idx=0;if(moving&&fr.length>1)idx=Math.floor(ph/1.3)%fr.length;
+  let idx=0;if(moving&&fr.length>1)idx=Math.floor(ph/1.3)%fr.length;else if(dd.idle!=null)idx=dd.idle;else if(meta.real&&fr.length>1)idx=dir==='down'?0:1;const realAn=meta.real&&fr.length>1;
   const f=fr[idx],im=img(A+f.k),w=f.w*GS,h=f.h*GS;
   x.save();x.translate(px,py);
   x.fillStyle='#0006';x.beginPath();x.ellipse(0,0,w*.42,3.5,0,0,7);x.fill();
@@ -9097,7 +9133,7 @@ function drawAnim(x,cid,px,py,isP,e){
   if(dd.mir)x.scale(-1,1);
   if(down){x.rotate(Math.PI/2);x.globalAlpha=.85}
   if(!ready(im)){x.fillStyle=isP?'#38bdf8':'#ef4444';x.fillRect(-6,-h,12,h)}
-  else if(!moving||down){x.drawImage(im,-w/2,-h,w,h)}
+  else if(!moving||down||realAn){x.drawImage(im,-w/2,-h,w,h)}
   else{
     const s=Math.sin(ph),L=LEG[cid]||.62,ih=im.naturalHeight,nw=im.naturalWidth,hs=Math.round(ih*L),hd=h*(hs/ih),ld=h-hd,nh=ih-hs;
     const hsU=Math.min(ih,hs+Math.max(2,Math.round(ih*.03))),hdU=h*(hsU/ih),bob=Math.abs(s)*1.1,side=(dir==='left'||dir==='right');
